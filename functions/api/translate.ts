@@ -124,7 +124,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
       ""
     ).trim();
     const requestedModel = typeof body.model === "string" ? body.model.trim() : "";
-    const model = allowedModels.has(requestedModel) ? requestedModel : "openai/gpt-oss-20b";
+    const model = allowedModels.has(requestedModel) ? requestedModel : "openai/gpt-oss-120b";
 
     if (!text) return json({ error: "Введите текст для перевода." }, 400);
     if (!apiKey) return json({ error: "Секрет Groq API не настроен на сервере." }, 500);
@@ -145,7 +145,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        reasoning_effort: "low",
+        reasoning_effort: model === "openai/gpt-oss-120b" ? "medium" : "low",
         max_completion_tokens: 2200,
         response_format: {
           type: "json_schema",

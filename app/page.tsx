@@ -31,11 +31,12 @@ type TranslationResult = {
   query: string;
 };
 
-const STORAGE_KEY = "wortklar-groq-settings";
+const DEFAULT_MODEL = "openai/gpt-oss-120b";
+const STORAGE_KEY = "wortklar-groq-settings-v2";
 
 export default function Home() {
   const [text, setText] = useState("");
-  const [model, setModel] = useState("openai/gpt-oss-20b");
+  const [model, setModel] = useState(DEFAULT_MODEL);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -46,7 +47,7 @@ export default function Home() {
     if (!saved) return;
     try {
       const settings = JSON.parse(saved) as { model?: string };
-      setModel(settings.model ?? "openai/gpt-oss-20b");
+      setModel(settings.model ?? DEFAULT_MODEL);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
     }
@@ -156,11 +157,11 @@ export default function Home() {
         <div className="settingsLayer" onMouseDown={() => setSettingsOpen(false)}>
           <section className="settingsPopover" onMouseDown={(event) => event.stopPropagation()} aria-label="Выбор модели">
             <p>Модель</p>
-            <button className={model === "openai/gpt-oss-20b" ? "selected" : ""} type="button" onClick={() => chooseModel("openai/gpt-oss-20b")}>
-              <span>GPT-OSS 20B</span><small>Быстро</small>
-            </button>
             <button className={model === "openai/gpt-oss-120b" ? "selected" : ""} type="button" onClick={() => chooseModel("openai/gpt-oss-120b")}>
-              <span>GPT-OSS 120B</span><small>Точнее</small>
+              <span>GPT-OSS 120B</span><small>Основная</small>
+            </button>
+            <button className={model === "openai/gpt-oss-20b" ? "selected" : ""} type="button" onClick={() => chooseModel("openai/gpt-oss-20b")}>
+              <span>GPT-OSS 20B</span><small>Экономная</small>
             </button>
           </section>
         </div>
