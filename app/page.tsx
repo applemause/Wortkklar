@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useRef, useState } from "react";
 
 type Entry = {
   type: "noun" | "verb" | "adjective" | "phrase" | "other";
@@ -34,6 +34,7 @@ type TranslationResult = {
 };
 
 export default function Home() {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -46,10 +47,9 @@ export default function Home() {
     }
   }
 
-  async function translate(event: FormEvent) {
-    event.preventDefault();
-    if (!text.trim()) return;
-    const submittedText = text.trim();
+  async function requestTranslation(value: string) {
+    const submittedText = value.trim();
+    if (!submittedText) return;
 
     setLoading(true);
     setError("");
@@ -70,6 +70,24 @@ export default function Home() {
     }
   }
 
+  function translate(event: FormEvent) {
+    event.preventDefault();
+    void requestTranslation(text);
+  }
+
+  function translateWord(word: string) {
+    if (loading) return;
+    setText(word);
+    requestAnimationFrame(() => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.style.height = "0px";
+      input.style.height = `${Math.min(input.scrollHeight, 240)}px`;
+      input.focus();
+    });
+    void requestTranslation(word);
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -82,6 +100,7 @@ export default function Home() {
         <form className="composer" onSubmit={translate}>
           <div className="inputRow">
             <textarea
+              ref={inputRef}
               value={text}
               onChange={(event) => {
                 setText(event.target.value);
@@ -106,7 +125,11 @@ export default function Home() {
           <section className="results" aria-live="polite">
             <div className="answer">
               <p className="answerWord" lang={result.targetLanguage}>
-                <AnswerText value={result.translation} entry={result.entries[0]} targetLanguage={result.targetLanguage} />
+                {result.kind === "sentence" ? (
+                  <ClickableText text={result.translation} onWord={translateWord} disabled={loading} />
+                ) : (
+                  <AnswerText value={result.translation} entry={result.entries[0]} targetLanguage={result.targetLanguage} />
+                )}
               </p>
               {result.correctedInput && result.correctedInput.trim() !== result.query.trim() && (
                 <p className="correction">
@@ -130,6 +153,8 @@ export default function Home() {
                     query={result.query}
                     showMeaning={result.entries.length > 1}
                     showSeparator={index > 0}
+                    onWord={translateWord}
+                    disabled={loading}
                     key={`${entry.word}-${index}`}
                   />
                 ))}
@@ -143,12 +168,14 @@ export default function Home() {
   );
 }
 
-function EntryView({ entry, answer, query, showMeaning, showSeparator }: {
+function EntryView({ entry, answer, query, showMeaning, showSeparator, onWord, disabled }: {
   entry: Entry;
   answer: string;
   query: string;
   showMeaning: boolean;
   showSeparator: boolean;
+  onWord: (word: string) => void;
+  disabled: boolean;
 }) {
   const term = entry.type === "noun" && entry.article ? `${entry.article} ${entry.word}` : entry.word;
   const queryRepeatsTerm = sameText(query, term) || (entry.type !== "noun" && sameText(query, entry.word));
@@ -188,8 +215,8 @@ function EntryView({ entry, answer, query, showMeaning, showSeparator }: {
         <div className="examples">
           {entry.examples.map((example, index) => (
             <div className="example" key={`${example.german}-${index}`}>
-              <p lang="de">{example.german}</p>
-              <span lang="ru">{example.russian}</span>
+              <p lang="de"><ClickableText text={example.german} onWord={onWord} disabled={disabled} /></p>
+              <span lang="ru"><ClickableText text={example.russian} onWord={onWord} disabled={disabled} /></span>
             </div>
           ))}
         </div>
@@ -269,6 +296,30 @@ function NounMeta({ entry, showHeadword }: { entry: Entry; showHeadword: boolean
       {plural && <span>die {plural}</span>}
     </p>
   );
+}
+
+function ClickableText({ text, onWord, disabled }: {
+  text: string;
+  onWord: (word: string) => void;
+  disabled: boolean;
+}) {
+  const parts = text.split(/(\p{L}[\p{L}\p{M}]*(?:[’'-][\p{L}\p{M}]+)*)/gu);
+
+  return parts.map((part, index) => {
+    if (!/^\p{L}/u.test(part)) return part;
+
+    return (
+      <button
+        className="wordToken"
+        type="button"
+        disabled={disabled}
+        onClick={() => onWord(part)}
+        key={`${part}-${index}`}
+      >
+        {part}
+      </button>
+    );
+  });
 }
 
 function ArrowIcon() {
