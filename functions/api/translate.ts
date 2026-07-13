@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-
-export const runtime = "nodejs";
+type PagesContext = {
+  request: Request;
+};
 
 const systemPrompt = `Ты — точный русско-немецкий учебный переводчик.
 Верни только JSON без markdown в формате:
@@ -43,17 +43,23 @@ const modelAliases: Record<string, string> = {
   "gpt-5.6": "gpt-5.2"
 };
 
-export async function POST(request: Request) {
+function json(data: unknown, status = 200) {
+  return Response.json(data, { status });
+}
+
+export async function onRequestPost(context: PagesContext): Promise<Response> {
   try {
-    const body = await request.json();
+    const body = await context.request.json() as Record<string, unknown>;
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const direction = body.direction === "de-ru" ? "de-ru" : "ru-de";
     const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
-    const requestedModel = typeof body.model === "string" && body.model.trim() ? body.model.trim() : "gpt-5.2";
+    const requestedModel = typeof body.model === "string" && body.model.trim()
+      ? body.model.trim()
+      : "gpt-5.2";
     const model = modelAliases[requestedModel] ?? requestedModel;
 
-    if (!text) return NextResponse.json({ error: "Введите текст для перевода." }, { status: 400 });
-    if (!apiKey) return NextResponse.json({ error: "Не указан API-ключ." }, { status: 400 });
+    if (!text) return json({ error: "Введите текст для перевода." }, 400);
+    if (!apiKey) return json({ error: "Не указан API-ключ." }, 400);
 
     const userPrompt = direction === "ru-de"
       ? `Переведи с русского на немецкий и сделай учебный разбор: ${text}`
@@ -73,30 +79,34 @@ export async function POST(request: Request) {
       })
     });
 
-    const payload = await response.json();
+    const payload = await response.json() as {
+      error?: { message?: string };
+      output_text?: string;
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    };
+
     if (!response.ok) {
-      const message = payload?.error?.message || "OpenAI API вернул ошибку.";
-      return NextResponse.json({ error: message }, { status: response.status });
+      return json({ error: payload.error?.message || "OpenAI API вернул ошибку." }, response.status);
     }
 
     const outputText = payload.output_text ?? payload.output
-      ?.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content ?? [])
-      ?.find((item: { type?: string; text?: string }) => item.type === "output_text")?.text;
+      ?.flatMap((item) => item.content ?? [])
+      .find((item) => item.type === "output_text")?.text;
 
-    if (!outputText) return NextResponse.json({ error: "Модель не вернула текстовый ответ." }, { status: 502 });
+    if (!outputText) return json({ error: "Модель не вернула текстовый ответ." }, 502);
 
     const cleaned = outputText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned) as { translation?: string; entries?: unknown[] };
 
     if (!parsed.translation || !Array.isArray(parsed.entries)) {
-      return NextResponse.json({ error: "Ответ модели имеет неверный формат." }, { status: 502 });
+      return json({ error: "Ответ модели имеет неверный формат." }, 502);
     }
 
-    return NextResponse.json(parsed);
+    return json(parsed);
   } catch (error) {
     const message = error instanceof SyntaxError
       ? "Модель вернула некорректный JSON. Повторите запрос."
       : error instanceof Error ? error.message : "Неизвестная ошибка.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return json({ error: message }, 500);
   }
 }

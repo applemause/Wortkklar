@@ -29,19 +29,18 @@ Wortklar не только переводит, но и объясняет стр
 
 ## Развёртывание на Cloudflare
 
-Проект использует серверный маршрут `/api/translate`, поэтому его нельзя
-развёртывать как статический Next.js Export в Cloudflare Pages. Для полного
-Next.js-приложения используется Cloudflare Workers и официальный OpenNext-адаптер.
+Интерфейс экспортируется в статическую папку `out`, а серверный маршрут
+`/api/translate` работает как Cloudflare Pages Function из каталога `functions`.
+Так сайт и API развёртываются вместе в существующий Pages-проект.
 
-Для Git-интеграции Cloudflare Workers укажите:
+Для Git-интеграции Cloudflare Pages:
 
 - production branch: `main`;
 - root directory: `/`;
-- build command: `npm run build:cloudflare`;
-- deploy command: `npx opennextjs-cloudflare deploy`;
-- output directory: не указывать.
+- build command: `npm run build`;
+- output directory: `out`.
 
-Локальная проверка Worker-сборки:
+Локальная проверка Pages-сборки:
 
 ```bash
 npm ci
@@ -55,9 +54,8 @@ npm ci
 npm run deploy
 ```
 
-Важно: не выбирайте пресет `Next.js (Static HTML Export)` и не задавайте `.next`
-как папку публикации. `.next` — промежуточный результат Next.js, а готовый Worker
-создаётся адаптером в `.open-next`.
+Папка публикации также закреплена в `wrangler.jsonc`, поэтому новый Git-деплой
+может получить правильную конфигурацию непосредственно из репозитория.
 
 ## Ближайшие этапы
 
