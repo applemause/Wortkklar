@@ -16,9 +16,10 @@ type Entry = {
   comparative: string | null;
   superlative: string | null;
   government: string | null;
-  note: string | null;
-  example: string;
-  exampleTranslation: string;
+  examples: Array<{
+    german: string;
+    russian: string;
+  }>;
 };
 
 type TranslationResult = {
@@ -124,22 +125,23 @@ export default function Home() {
         {result && (
           <section className="results" aria-live="polite">
             <div className="answer">
-              <small className="resultDirection">
-                {result.sourceLanguage === "de" ? "Deutsch → Русский" : "Русский → Deutsch"}
-              </small>
-              <p lang={result.targetLanguage}><AnswerText value={result.translation} /></p>
+              <p className="answerWord" lang={result.targetLanguage}>
+                <AnswerText value={result.translation} entry={result.entries[0]} targetLanguage={result.targetLanguage} />
+              </p>
+              {result.entries.length === 1 && result.entries[0]?.type === "noun" && (
+                <NounMeta entry={result.entries[0]} showHeadword={result.targetLanguage !== "de"} />
+              )}
               {result.explanation && !sameText(result.explanation, result.translation) && (
                 <span lang="ru">{result.explanation}</span>
               )}
             </div>
 
-            <div className="entries">
+            <div className={`entries${result.entries.length === 1 ? " single" : ""}`}>
               {result.entries.map((entry, index) => (
                 <EntryView
                   entry={entry}
                   answer={result.translation}
                   query={result.query}
-                  explanation={result.explanation}
                   showMeaning={result.entries.length > 1}
                   showSeparator={index > 0}
                   key={`${entry.word}-${index}`}
@@ -167,11 +169,10 @@ export default function Home() {
   );
 }
 
-function EntryView({ entry, answer, query, explanation, showMeaning, showSeparator }: {
+function EntryView({ entry, answer, query, showMeaning, showSeparator }: {
   entry: Entry;
   answer: string;
   query: string;
-  explanation: string;
   showMeaning: boolean;
   showSeparator: boolean;
 }) {
@@ -180,13 +181,10 @@ function EntryView({ entry, answer, query, explanation, showMeaning, showSeparat
   const showTerm = !containsText(answer, term) && !queryRepeatsTerm;
   const showTranslation = showMeaning && !containsText(answer, entry.translation) && !sameText(query, entry.translation);
   const forms = morphologyForms(entry);
-  const showNote = entry.note && !sameText(entry.note, explanation);
 
   return (
     <article className={`entry${showSeparator ? " separated" : ""}`}>
-      <small className="entryKind">{entryTypeLabel(entry.type)}</small>
-
-      {showTerm && (
+      {showMeaning && showTerm && (
         <div className="term" lang="de">
           {entry.type === "noun" && entry.article && (
             <span className={`article ${genderClass(entry.article)}`}>{entry.article}</span>
@@ -209,24 +207,17 @@ function EntryView({ entry, answer, query, explanation, showMeaning, showSeparat
       )}
 
       {entry.government && (
-        <div className="annotation">
-          <small>Управление</small>
-          <p lang="de">{entry.government}</p>
-        </div>
+        <p className="government" lang="de">{entry.government}</p>
       )}
 
-      {showNote && (
-        <div className="annotation">
-          <small>Грамматика</small>
-          <p lang="ru">{entry.note}</p>
-        </div>
-      )}
-
-      {(entry.example || entry.exampleTranslation) && (
-        <div className="example">
-          <small>Пример</small>
-          {entry.example && <p lang="de">{entry.example}</p>}
-          {entry.exampleTranslation && !sameText(entry.example, entry.exampleTranslation) && <span lang="ru">{entry.exampleTranslation}</span>}
+      {entry.examples.length > 0 && (
+        <div className="examples">
+          {entry.examples.map((example, index) => (
+            <div className="example" key={`${example.german}-${index}`}>
+              <p lang="de">{example.german}</p>
+              <span lang="ru">{example.russian}</span>
+            </div>
+          ))}
         </div>
       )}
     </article>
@@ -234,10 +225,6 @@ function EntryView({ entry, answer, query, explanation, showMeaning, showSeparat
 }
 
 function morphologyForms(entry: Entry) {
-  if (entry.type === "noun") {
-    return entry.plural ? [{ label: "Множественное", value: entry.plural }] : [];
-  }
-
   if (entry.type === "verb") {
     return [
       { label: "Infinitiv", value: entry.infinitive ?? entry.word },
@@ -279,22 +266,37 @@ function genderClass(article: "der" | "die" | "das") {
   return article === "der" ? "masculine" : article === "die" ? "feminine" : "neutral";
 }
 
-function entryTypeLabel(type: Entry["type"]) {
-  return {
-    noun: "Существительное",
-    verb: "Глагол",
-    adjective: "Прилагательное",
-    phrase: "Выражение",
-    other: "Разбор"
-  }[type];
-}
+function AnswerText({ value, entry, targetLanguage }: {
+  value: string;
+  entry?: Entry;
+  targetLanguage: "ru" | "de";
+}) {
+  if (targetLanguage === "de" && entry?.type === "noun" && entry.article) {
+    const hasArticle = /^(der|die|das)\s+/i.test(value);
+    const noun = hasArticle ? value : `${entry.article} ${value}`;
+    return <span className={`answerGender ${genderClass(entry.article)}`}>{noun}</span>;
+  }
 
-function AnswerText({ value }: { value: string }) {
   const match = value.match(/^(der|die|das)\s+(.+)$/i);
   if (!match) return value;
 
   const article = match[1].toLocaleLowerCase("de-DE") as "der" | "die" | "das";
-  return <><span className={`answerArticle ${genderClass(article)}`}>{match[1]}</span> {match[2]}</>;
+  return <span className={`answerGender ${genderClass(article)}`}>{value}</span>;
+}
+
+function NounMeta({ entry, showHeadword }: { entry: Entry; showHeadword: boolean }) {
+  if (!entry.article && !entry.plural) return null;
+  const plural = entry.plural?.replace(/^die\s+/i, "");
+
+  return (
+    <p className="nounMeta" lang="de">
+      {showHeadword && entry.article && (
+        <span className={genderClass(entry.article)}>{entry.article} {entry.word}</span>
+      )}
+      {showHeadword && entry.article && plural && <i>·</i>}
+      {plural && <span>die {plural}</span>}
+    </p>
+  );
 }
 
 function SettingsIcon() {

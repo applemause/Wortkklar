@@ -27,23 +27,26 @@ const systemPrompt = `Ты — точный русско-немецкий уче
       "comparative": "Komparativ или null",
       "superlative": "Superlativ или null",
       "government": "управление с предлогом и падежом или null",
-      "note": "краткая грамматическая или стилистическая заметка или null",
-      "example": "естественный пример на немецком",
-      "exampleTranslation": "перевод примера на русский"
+      "examples": [
+        { "german": "естественный пример на немецком", "russian": "перевод на русский" },
+        { "german": "второй пример на немецком", "russian": "перевод на русский" },
+        { "german": "третий пример на немецком", "russian": "перевод на русский" }
+      ]
     }
   ]
 }
 Правила:
 - Поле translation содержит только один основной естественный перевод на целевом языке. Не повторяй исходное слово, не добавляй тире, слеши, подписи и пояснения.
-- Все explanation, entries[].translation и entries[].note пиши только по-русски.
-- Немецкий язык используй только в entries[].word, грамматических формах, government и example.
-- exampleTranslation всегда пиши по-русски.
-- Для одного слова возвращай ровно один entry. Не дублируй одну и ту же информацию в explanation и note.
+- Все explanation и entries[].translation пиши только по-русски.
+- Немецкий язык используй только в entries[].word, грамматических формах, government и examples[].german.
+- examples[].russian всегда пиши по-русски. Дай ровно три коротких, естественных и разных примера уровня A2-B1.
+- Для одного слова возвращай ровно один entry.
 - При переводе с русского на немецкий всегда разбирай ключевые немецкие слова результата.
-- Для существительных обязательно указывай артикль и множественное число.
+- Если основной немецкий перевод — существительное, translation обязательно начинай с артикля der, die или das.
+- Для существительных обязательно указывай артикль и множественное число без артикля die в поле plural.
 - Для глаголов обязательно указывай Infinitiv, Präteritum, Partizip II и haben/sein.
 - Для отделяемых и возвратных глаголов показывай полную словарную форму. У отделяемых глаголов указывай корректную форму Präteritum, например "bog ab", и Partizip II.
-- В explanation кратко объясни значение или различие употребления, но не перечисляй формы из entry.
+- Для простого однозначного слова оставляй explanation пустой строкой. Заполняй его только если нужно коротко различить значения или употребление; не давай общих определений и не описывай типичные склонения.
 - Не придумывай редкие значения без необходимости.
 - Пояснение должно быть коротким и понятным ученику A2-B1.
 - JSON должен быть валидным.`;
@@ -76,14 +79,25 @@ const translationSchema = {
           comparative: { type: ["string", "null"] },
           superlative: { type: ["string", "null"] },
           government: { type: ["string", "null"] },
-          note: { type: ["string", "null"] },
-          example: { type: "string" },
-          exampleTranslation: { type: "string" }
+          examples: {
+            type: "array",
+            minItems: 3,
+            maxItems: 3,
+            items: {
+              type: "object",
+              properties: {
+                german: { type: "string" },
+                russian: { type: "string" }
+              },
+              required: ["german", "russian"],
+              additionalProperties: false
+            }
+          }
         },
         required: [
           "type", "word", "translation", "article", "plural", "gender",
           "infinitive", "preterite", "participle", "auxiliary", "comparative",
-          "superlative", "government", "note", "example", "exampleTranslation"
+          "superlative", "government", "examples"
         ],
         additionalProperties: false
       }

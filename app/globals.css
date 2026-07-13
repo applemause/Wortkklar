@@ -76,6 +76,7 @@ textarea {
   padding: 0 0 17px;
   resize: none;
   overflow-y: auto;
+  scrollbar-width: none;
   border: 0;
   outline: 0;
   background: transparent;
@@ -87,6 +88,7 @@ textarea {
 }
 
 textarea::placeholder { color: var(--tertiary); opacity: 1; }
+textarea::-webkit-scrollbar { display: none; }
 
 .submitButton {
   flex: 0 0 auto;
@@ -128,22 +130,7 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
 
 .results { padding-top: clamp(62px, 10vw, 92px); }
 
-.resultDirection,
-.entryKind,
-.annotation small,
-.example small {
-  display: block;
-  color: var(--secondary);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: .085em;
-  text-transform: uppercase;
-}
-
-.resultDirection { margin-bottom: 15px; }
-
-.answer > p {
+.answerWord {
   margin: 0;
   font-size: clamp(40px, 7vw, 60px);
   font-weight: 520;
@@ -151,7 +138,22 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
   letter-spacing: -0.052em;
 }
 
-.answerArticle { font-weight: 560; }
+.answerGender { font-weight: 540; }
+
+.nounMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 11px 0 0;
+  color: var(--secondary);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.nounMeta i { color: var(--tertiary); font-style: normal; }
+.nounMeta .masculine,
+.nounMeta .feminine,
+.nounMeta .neutral { font-weight: 560; }
 
 .answer > span {
   display: block;
@@ -162,14 +164,18 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
   line-height: 1.52;
 }
 
-.entries { margin-top: 52px; }
+.entries { margin-top: 34px; }
+.entries.single { margin-top: 30px; }
 
 .entry {
-  padding: 28px 0 44px;
-  border-top: 1px solid var(--line);
+  padding: 0 0 44px;
 }
 
-.entryKind { margin-bottom: 13px; }
+.entry.separated {
+  margin-top: 32px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+}
 
 .term { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 .term strong { font-size: 24px; font-weight: 570; letter-spacing: -0.035em; }
@@ -187,10 +193,8 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
 .morphology {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  margin: 22px 0 0;
-  padding: 17px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  margin: 0;
+  padding: 0;
 }
 
 .morphology > div { min-width: 0; padding-right: 18px; }
@@ -209,31 +213,25 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
   overflow-wrap: anywhere;
 }
 
-.annotation {
+.government {
   max-width: 600px;
-  margin-top: 25px;
-}
-
-.annotation p {
-  margin: 8px 0 0;
+  margin: 24px 0 0;
   color: var(--secondary);
   font-size: 15px;
   line-height: 1.52;
 }
 
-.example {
-  margin-top: 30px;
-  padding-top: 23px;
+.examples {
+  margin-top: 36px;
+  padding-top: 28px;
   border-top: 1px solid var(--line);
 }
 
-.example p { margin: 10px 0 0; font-size: 18px; line-height: 1.45; }
-.example span { display: block; margin-top: 5px; color: var(--secondary); font-size: 15px; line-height: 1.5; }
+.entries.single .examples { margin-top: 0; }
 
-.morphology + .example {
-  padding-top: 0;
-  border-top: 0;
-}
+.example + .example { margin-top: 24px; }
+.example p { margin: 0; font-size: 18px; line-height: 1.45; }
+.example span { display: block; margin-top: 5px; color: var(--secondary); font-size: 15px; line-height: 1.5; }
 
 @media (max-width: 600px) {
   .shell { width: min(100% - 28px, 720px); }
@@ -242,10 +240,9 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
   textarea { min-height: 58px; padding-bottom: 14px; font-size: 34px; }
   .submitButton { width: 36px; height: 36px; margin-bottom: 13px; }
   .results { padding-top: 56px; }
-  .answer > p { font-size: 44px; }
+  .answerWord { font-size: 44px; }
   .answer > span { font-size: 15px; }
-  .entries { margin-top: 40px; }
-  .entry { padding-top: 24px; }
+  .entries, .entries.single { margin-top: 28px; }
   .morphology { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
   .morphology > div { padding-right: 10px; }
   .morphology > div + div { padding-left: 10px; }
