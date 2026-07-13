@@ -37,13 +37,20 @@ const systemPrompt = `Ты — точный русско-немецкий уче
 - Пояснение должно быть коротким и понятным ученику A2-B1.
 - JSON должен быть валидным.`;
 
+const modelAliases: Record<string, string> = {
+  "gpt-5.6-luna": "gpt-5-mini",
+  "gpt-5.6-terra": "gpt-5.2",
+  "gpt-5.6": "gpt-5.2"
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const direction = body.direction === "de-ru" ? "de-ru" : "ru-de";
     const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
-    const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : "gpt-5.2";
+    const requestedModel = typeof body.model === "string" && body.model.trim() ? body.model.trim() : "gpt-5.2";
+    const model = modelAliases[requestedModel] ?? requestedModel;
 
     if (!text) return NextResponse.json({ error: "Введите текст для перевода." }, { status: 400 });
     if (!apiKey) return NextResponse.json({ error: "Не указан API-ключ." }, { status: 400 });
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
