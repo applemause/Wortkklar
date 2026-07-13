@@ -55,11 +55,6 @@ const systemPrompt = `Ты — точный русско-немецкий уче
 - Пояснение должно быть коротким и понятным ученику A2-B1.
 - JSON должен быть валидным.`;
 
-const allowedModels = new Set([
-  "openai/gpt-oss-20b",
-  "openai/gpt-oss-120b"
-]);
-
 const translationSchema = {
   type: "object",
   properties: {
@@ -142,8 +137,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
       context.env.GROQ_API_KEY ??
       ""
     ).trim();
-    const requestedModel = typeof body.model === "string" ? body.model.trim() : "";
-    const model = allowedModels.has(requestedModel) ? requestedModel : "openai/gpt-oss-120b";
+    const model = "openai/gpt-oss-120b";
 
     if (!text) return json({ error: "Введите текст для перевода." }, 400);
     if (!apiKey) return json({ error: "Секрет Groq API не настроен на сервере." }, 500);
@@ -169,7 +163,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
             { role: "system", content: systemPrompt },
             { role: "user", content: `${userPrompt}${retryInstruction}` }
           ],
-          reasoning_effort: model === "openai/gpt-oss-120b" ? "medium" : "low",
+          reasoning_effort: "medium",
           max_completion_tokens: 2200,
           response_format: {
             type: "json_schema",

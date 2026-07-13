@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useState } from "react";
+import { FormEvent, KeyboardEvent, useState } from "react";
 
 type Entry = {
   type: "noun" | "verb" | "adjective" | "phrase" | "other";
@@ -33,33 +33,11 @@ type TranslationResult = {
   query: string;
 };
 
-const DEFAULT_MODEL = "openai/gpt-oss-120b";
-const STORAGE_KEY = "wortklar-groq-settings-v2";
-
 export default function Home() {
   const [text, setText] = useState("");
-  const [model, setModel] = useState(DEFAULT_MODEL);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<TranslationResult | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-    try {
-      const settings = JSON.parse(saved) as { model?: string };
-      setModel(settings.model ?? DEFAULT_MODEL);
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
-
-  function chooseModel(nextModel: string) {
-    setModel(nextModel);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ model: nextModel }));
-    setSettingsOpen(false);
-  }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -79,7 +57,7 @@ export default function Home() {
       const response = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: submittedText, model: model.trim() })
+        body: JSON.stringify({ text: submittedText })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось выполнить перевод.");
@@ -95,10 +73,9 @@ export default function Home() {
   return (
     <main className="shell">
       <header className="topbar">
-        <span className="wordmark">Wortklar</span>
-        <button className="iconButton" type="button" onClick={() => setSettingsOpen(true)} aria-label="Настройки">
-          <SettingsIcon />
-        </button>
+        <span className="wordmark" aria-label="Wortklar">
+          <span>wort</span><strong>klar</strong><i />
+        </span>
       </header>
 
       <div className="workspace">
@@ -162,19 +139,6 @@ export default function Home() {
         )}
       </div>
 
-      {settingsOpen && (
-        <div className="settingsLayer" onMouseDown={() => setSettingsOpen(false)}>
-          <section className="settingsPopover" onMouseDown={(event) => event.stopPropagation()} aria-label="Выбор модели">
-            <p>Модель</p>
-            <button className={model === "openai/gpt-oss-120b" ? "selected" : ""} type="button" onClick={() => chooseModel("openai/gpt-oss-120b")}>
-              <span>GPT-OSS 120B</span><small>Основная</small>
-            </button>
-            <button className={model === "openai/gpt-oss-20b" ? "selected" : ""} type="button" onClick={() => chooseModel("openai/gpt-oss-20b")}>
-              <span>GPT-OSS 20B</span><small>Экономная</small>
-            </button>
-          </section>
-        </div>
-      )}
     </main>
   );
 }
@@ -305,10 +269,6 @@ function NounMeta({ entry, showHeadword }: { entry: Entry; showHeadword: boolean
       {plural && <span>die {plural}</span>}
     </p>
   );
-}
-
-function SettingsIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2.75v2.1M12 19.15v2.1M21.25 12h-2.1M4.85 12h-2.1M18.54 5.46l-1.49 1.49M6.95 17.05l-1.49 1.49M18.54 18.54l-1.49-1.49M6.95 6.95 5.46 5.46" /></svg>;
 }
 
 function ArrowIcon() {

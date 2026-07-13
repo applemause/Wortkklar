@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "./settings.css";
 
 export const metadata: Metadata = {
   title: "Wortklar — умный немецко-русский переводчик",

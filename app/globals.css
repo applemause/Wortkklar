@@ -36,33 +36,27 @@ button { color: inherit; }
   height: 68px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 .wordmark {
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 17px;
+  font-weight: 480;
+  line-height: 1;
+  letter-spacing: -0.065em;
 }
 
-.iconButton {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
+.wordmark strong { font-weight: 730; }
+.wordmark i {
+  width: 4px;
+  height: 4px;
+  margin-left: 4px;
   border-radius: 50%;
-  background: transparent;
-  color: var(--secondary);
-  cursor: pointer;
-  transition: background .16s ease, color .16s ease;
+  background: var(--masculine);
 }
 
-.iconButton:hover { background: var(--control); color: var(--ink); }
-.iconButton svg { width: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.45; }
-
-.workspace { padding: clamp(74px, 14vh, 132px) 0 96px; }
+.workspace { padding: clamp(48px, 9vh, 88px) 0 96px; }
 
 .composer { border-bottom: 1px solid var(--ink); }
 
@@ -242,7 +236,7 @@ textarea::-webkit-scrollbar { display: none; }
 @media (max-width: 600px) {
   .shell { width: min(100% - 28px, 720px); }
   .topbar { height: 58px; }
-  .workspace { padding-top: 72px; }
+  .workspace { padding-top: 46px; }
   textarea { min-height: 58px; padding-bottom: 14px; font-size: 34px; }
   .submitButton { width: 36px; height: 36px; margin-bottom: 13px; }
   .results { padding-top: 56px; }
