@@ -28,13 +28,13 @@ type TranslationResult = {
   entries: Entry[];
 };
 
-const STORAGE_KEY = "wortklar-settings";
+const STORAGE_KEY = "wortklar-groq-settings";
 
 export default function Home() {
   const [direction, setDirection] = useState<Direction>("ru-de");
   const [text, setText] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gpt-5.6-luna");
+  const [model, setModel] = useState("openai/gpt-oss-20b");
   const [rememberKey, setRememberKey] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export default function Home() {
     try {
       const settings = JSON.parse(saved) as { apiKey?: string; model?: string; rememberKey?: boolean };
       setApiKey(settings.apiKey ?? "");
-      setModel(settings.model ?? "gpt-5.6-luna");
+      setModel(settings.model ?? "openai/gpt-oss-20b");
       setRememberKey(settings.rememberKey ?? true);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
@@ -202,15 +202,14 @@ export default function Home() {
               <div><small>Настройки</small><h2 id="settings-title">Подключение API</h2></div>
               <button type="button" className="closeButton" onClick={() => setSettingsOpen(false)}>×</button>
             </div>
-            <label className="fieldLabel">OpenAI API key
-              <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="sk-…" autoComplete="off" />
+            <label className="fieldLabel">Groq API key
+              <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="gsk_…" autoComplete="off" />
             </label>
-            <p className="fieldHint">Ключ передаётся только вашему серверному маршруту и OpenAI. В репозиторий он не попадает.</p>
+            <p className="fieldHint">Ключ передаётся только вашему серверному маршруту и Groq. В репозиторий он не попадает.</p>
             <label className="fieldLabel">Модель
               <select value={model} onChange={(event) => setModel(event.target.value)}>
-                <option value="gpt-5.6-luna">GPT-5.6 Luna — экономно</option>
-                <option value="gpt-5.6-terra">GPT-5.6 Terra — точнее</option>
-                <option value="gpt-5.6">GPT-5.6 Sol — максимум качества</option>
+                <option value="openai/gpt-oss-20b">GPT-OSS 20B — экономно</option>
+                <option value="openai/gpt-oss-120b">GPT-OSS 120B — точнее</option>
               </select>
             </label>
             <label className="checkLabel"><input type="checkbox" checked={rememberKey} onChange={(event) => setRememberKey(event.target.checked)} />Сохранить ключ в этом браузере</label>

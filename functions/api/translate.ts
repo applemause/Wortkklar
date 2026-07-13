@@ -37,10 +37,49 @@ const systemPrompt = `Ты — точный русско-немецкий уче
 - Пояснение должно быть коротким и понятным ученику A2-B1.
 - JSON должен быть валидным.`;
 
-const modelAliases: Record<string, string> = {
-  "gpt-5.6-luna": "gpt-5-mini",
-  "gpt-5.6-terra": "gpt-5.2",
-  "gpt-5.6": "gpt-5.2"
+const allowedModels = new Set([
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b"
+]);
+
+const translationSchema = {
+  type: "object",
+  properties: {
+    translation: { type: "string" },
+    explanation: { type: "string" },
+    entries: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["noun", "verb", "adjective", "phrase", "other"] },
+          word: { type: "string" },
+          translation: { type: "string" },
+          article: { type: ["string", "null"], enum: ["der", "die", "das", null] },
+          plural: { type: ["string", "null"] },
+          gender: { type: ["string", "null"], enum: ["maskulin", "feminin", "neutral", null] },
+          infinitive: { type: ["string", "null"] },
+          preterite: { type: ["string", "null"] },
+          participle: { type: ["string", "null"] },
+          auxiliary: { type: ["string", "null"], enum: ["haben", "sein", null] },
+          comparative: { type: ["string", "null"] },
+          superlative: { type: ["string", "null"] },
+          government: { type: ["string", "null"] },
+          note: { type: ["string", "null"] },
+          example: { type: "string" },
+          exampleTranslation: { type: "string" }
+        },
+        required: [
+          "type", "word", "translation", "article", "plural", "gender",
+          "infinitive", "preterite", "participle", "auxiliary", "comparative",
+          "superlative", "government", "note", "example", "exampleTranslation"
+        ],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["translation", "explanation", "entries"],
+  additionalProperties: false
 };
 
 function json(data: unknown, status = 200) {
@@ -53,10 +92,8 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const direction = body.direction === "de-ru" ? "de-ru" : "ru-de";
     const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
-    const requestedModel = typeof body.model === "string" && body.model.trim()
-      ? body.model.trim()
-      : "gpt-5.2";
-    const model = modelAliases[requestedModel] ?? requestedModel;
+    const requestedModel = typeof body.model === "string" ? body.model.trim() : "";
+    const model = allowedModels.has(requestedModel) ? requestedModel : "openai/gpt-oss-20b";
 
     if (!text) return json({ error: "Введите текст для перевода." }, 400);
     if (!apiKey) return json({ error: "Не указан API-ключ." }, 400);
@@ -65,7 +102,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
       ? `Переведи с русского на немецкий и сделай учебный разбор: ${text}`
       : `Переведи с немецкого на русский и сделай учебный разбор немецких слов: ${text}`;
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -73,25 +110,33 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
       },
       body: JSON.stringify({
         model,
-        instructions: systemPrompt,
-        input: userPrompt,
-        max_output_tokens: 2200
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        reasoning_effort: "low",
+        max_completion_tokens: 2200,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "translation_result",
+            strict: true,
+            schema: translationSchema
+          }
+        }
       })
     });
 
     const payload = await response.json() as {
       error?: { message?: string };
-      output_text?: string;
-      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+      choices?: Array<{ message?: { content?: string } }>;
     };
 
     if (!response.ok) {
-      return json({ error: payload.error?.message || "OpenAI API вернул ошибку." }, response.status);
+      return json({ error: payload.error?.message || "Groq API вернул ошибку." }, response.status);
     }
 
-    const outputText = payload.output_text ?? payload.output
-      ?.flatMap((item) => item.content ?? [])
-      .find((item) => item.type === "output_text")?.text;
+    const outputText = payload.choices?.[0]?.message?.content;
 
     if (!outputText) return json({ error: "Модель не вернула текстовый ответ." }, 502);
 
