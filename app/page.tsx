@@ -23,6 +23,8 @@ type Entry = {
 };
 
 type TranslationResult = {
+  kind: "term" | "sentence";
+  correctedInput: string | null;
   translation: string;
   explanation: string;
   entries: Entry[];
@@ -60,7 +62,7 @@ export default function Home() {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
     }
@@ -129,7 +131,12 @@ export default function Home() {
               <p className="answerWord" lang={result.targetLanguage}>
                 <AnswerText value={result.translation} entry={result.entries[0]} targetLanguage={result.targetLanguage} />
               </p>
-              {result.entries.length === 1 && result.entries[0]?.type === "noun" && (
+              {result.correctedInput && result.correctedInput.trim() !== result.query.trim() && (
+                <p className="correction">
+                  <s>{result.query}</s><i>→</i><span>{result.correctedInput}</span>
+                </p>
+              )}
+              {result.kind === "term" && result.entries.length === 1 && result.entries[0]?.type === "noun" && (
                 <NounMeta entry={result.entries[0]} showHeadword={result.targetLanguage !== "de"} />
               )}
               {result.explanation && !sameText(result.explanation, result.translation) && (
@@ -137,18 +144,20 @@ export default function Home() {
               )}
             </div>
 
-            <div className={`entries${result.entries.length === 1 ? " single" : ""}`}>
-              {result.entries.map((entry, index) => (
-                <EntryView
-                  entry={entry}
-                  answer={result.translation}
-                  query={result.query}
-                  showMeaning={result.entries.length > 1}
-                  showSeparator={index > 0}
-                  key={`${entry.word}-${index}`}
-                />
-              ))}
-            </div>
+            {result.kind === "term" && result.entries.length > 0 && (
+              <div className={`entries${result.entries.length === 1 ? " single" : ""}`}>
+                {result.entries.map((entry, index) => (
+                  <EntryView
+                    entry={entry}
+                    answer={result.translation}
+                    query={result.query}
+                    showMeaning={result.entries.length > 1}
+                    showSeparator={index > 0}
+                    key={`${entry.word}-${index}`}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )}
       </div>
@@ -197,14 +206,14 @@ function EntryView({ entry, answer, query, showMeaning, showSeparator }: {
       {showTranslation && <p className="entryTranslation" lang="ru">{entry.translation}</p>}
 
       {forms.length > 0 && (
-        <dl className="morphology">
-          {forms.map((form) => (
-            <div key={`${form.label}-${form.value}`}>
-              <dt>{form.label}</dt>
-              <dd lang="de">{form.value}</dd>
-            </div>
+        <p className="morphology" lang="de">
+          {forms.map((form, index) => (
+            <span key={form}>
+              {index > 0 && <i>·</i>}
+              {form}
+            </span>
           ))}
-        </dl>
+        </p>
       )}
 
       {entry.government && (
@@ -228,20 +237,18 @@ function EntryView({ entry, answer, query, showMeaning, showSeparator }: {
 function morphologyForms(entry: Entry) {
   if (entry.type === "verb") {
     return [
-      { label: "Infinitiv", value: entry.infinitive ?? entry.word },
-      entry.preterite ? { label: "Präteritum", value: entry.preterite } : null,
-      entry.participle ? {
-        label: "Perfekt",
-        value: `${entry.auxiliary === "sein" ? "ist" : "hat"} ${entry.participle}`
-      } : null
-    ].filter((item): item is { label: string; value: string } => Boolean(item));
+      entry.infinitive ?? entry.word,
+      entry.preterite,
+      entry.participle ? `${entry.auxiliary === "sein" ? "ist" : "hat"} ${entry.participle}` : null
+    ].filter((item): item is string => Boolean(item));
   }
 
   if (entry.type === "adjective") {
     return [
-      entry.comparative ? { label: "Komparativ", value: entry.comparative } : null,
-      entry.superlative ? { label: "Superlativ", value: entry.superlative } : null
-    ].filter((item): item is { label: string; value: string } => Boolean(item));
+      entry.word,
+      entry.comparative,
+      entry.superlative
+    ].filter((item): item is string => Boolean(item));
   }
 
   return [];

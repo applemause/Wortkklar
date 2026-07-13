@@ -10,6 +10,8 @@ type PagesContext = {
 const systemPrompt = `Ты — точный русско-немецкий учебный переводчик для русскоязычного ученика.
 Верни только JSON без markdown в формате:
 {
+  "kind": "term|sentence",
+  "correctedInput": "исправленный исходный текст или null",
   "translation": "основной естественный перевод",
   "explanation": "краткое полезное пояснение",
   "entries": [
@@ -36,14 +38,16 @@ const systemPrompt = `Ты — точный русско-немецкий уче
   ]
 }
 Правила:
+- Сначала исправь орфографию исходного текста. correctedInput содержит только исправленный исходный текст, если он отличается хотя бы регистром или буквой; иначе null. Никогда не помещай туда перевод.
+- kind="sentence" для полноценного предложения. Для предложения верни только translation, correctedInput при необходимости, пустую explanation и пустой массив entries. Не делай словарный разбор и не создавай примеры.
+- kind="term" для одного слова или короткого словарного выражения. Для него верни ровно один entry и три примера.
 - Поле translation содержит только один основной естественный перевод на целевом языке. Не повторяй исходное слово, не добавляй тире, слеши, подписи и пояснения.
 - Все explanation и entries[].translation пиши только по-русски.
 - Немецкий язык используй только в entries[].word, грамматических формах, government и examples[].german.
-- examples[].russian всегда пиши по-русски. Дай ровно три коротких, естественных и разных примера уровня A2-B1.
-- Для одного слова возвращай ровно один entry.
+- examples[].russian всегда пиши по-русски. Для kind="term" дай ровно три коротких, естественных и разных примера уровня A2-B1.
 - При переводе с русского на немецкий всегда разбирай ключевые немецкие слова результата.
 - Если основной немецкий перевод — существительное, translation обязательно начинай с артикля der, die или das.
-- Для существительных обязательно указывай артикль и множественное число без артикля die в поле plural.
+- Для немецкого существительного всегда нормализуй entry.word в единственное число и укажи его артикль, даже если пользователь ввёл множественное число. В plural укажи множественное число без артикля die.
 - Для глаголов обязательно указывай Infinitiv, Präteritum, Partizip II и haben/sein.
 - Для отделяемых и возвратных глаголов показывай полную словарную форму. У отделяемых глаголов указывай корректную форму Präteritum, например "bog ab", и Partizip II.
 - Для простого однозначного слова оставляй explanation пустой строкой. Заполняй его только если нужно коротко различить значения или употребление; не давай общих определений и не описывай типичные склонения.
@@ -59,6 +63,8 @@ const allowedModels = new Set([
 const translationSchema = {
   type: "object",
   properties: {
+    kind: { type: "string", enum: ["term", "sentence"] },
+    correctedInput: { type: ["string", "null"] },
     translation: { type: "string" },
     explanation: { type: "string" },
     entries: {
@@ -103,12 +109,25 @@ const translationSchema = {
       }
     }
   },
-  required: ["translation", "explanation", "entries"],
+  required: ["kind", "correctedInput", "translation", "explanation", "entries"],
   additionalProperties: false
 };
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status });
+}
+
+type ParsedTranslation = {
+  kind?: "term" | "sentence";
+  correctedInput?: string | null;
+  translation?: string;
+  explanation?: string;
+  entries?: unknown[];
+};
+
+function hasExpectedLanguage(value: string, targetLanguage: "ru" | "de") {
+  const hasCyrillic = /[А-Яа-яЁё]/.test(value);
+  return targetLanguage === "ru" ? hasCyrillic : !hasCyrillic && /[A-Za-zÄÖÜäöüß]/.test(value);
 }
 
 export async function onRequestPost(context: PagesContext): Promise<Response> {
@@ -133,52 +152,66 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
       ? `Исходный язык: русский. Целевой язык: немецкий. Переведи и разбери немецкий результат. Все пояснения дай по-русски. Текст: ${text}`
       : `Исходный язык: немецкий. Целевой язык: русский. Переведи и разбери немецкий оригинал. Все пояснения дай по-русски. Текст: ${text}`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        reasoning_effort: model === "openai/gpt-oss-120b" ? "medium" : "low",
-        max_completion_tokens: 2200,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "translation_result",
-            strict: true,
-            schema: translationSchema
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const retryInstruction = attempt === 0 ? "" : targetLanguage === "ru"
+        ? "\nКРИТИЧЕСКИ ВАЖНО: предыдущий ответ был отклонён, потому что translation был не на русском. Верни translation только на русском языке."
+        : "\nКРИТИЧЕСКИ ВАЖНО: предыдущий ответ был отклонён, потому что translation был не на немецком. Верни translation только на немецком языке.";
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `${userPrompt}${retryInstruction}` }
+          ],
+          reasoning_effort: model === "openai/gpt-oss-120b" ? "medium" : "low",
+          max_completion_tokens: 2200,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "translation_result",
+              strict: true,
+              schema: translationSchema
+            }
           }
-        }
-      })
-    });
+        })
+      });
 
-    const payload = await response.json() as {
-      error?: { message?: string };
-      choices?: Array<{ message?: { content?: string } }>;
-    };
+      const payload = await response.json() as {
+        error?: { message?: string };
+        choices?: Array<{ message?: { content?: string } }>;
+      };
 
-    if (!response.ok) {
-      return json({ error: payload.error?.message || "Groq API вернул ошибку." }, response.status);
+      if (!response.ok) {
+        return json({ error: payload.error?.message || "Groq API вернул ошибку." }, response.status);
+      }
+
+      const outputText = payload.choices?.[0]?.message?.content;
+      if (!outputText) continue;
+
+      const cleaned = outputText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+      const parsed = JSON.parse(cleaned) as ParsedTranslation;
+      const validShape = parsed.translation && parsed.kind && Array.isArray(parsed.entries);
+      const validTerm = parsed.kind !== "term" || parsed.entries!.length === 1;
+
+      if (!validShape || !validTerm || !hasExpectedLanguage(parsed.translation!, targetLanguage)) {
+        continue;
+      }
+
+      if (parsed.kind === "sentence") {
+        parsed.entries = [];
+        parsed.explanation = "";
+      }
+
+      return json({ ...parsed, sourceLanguage, targetLanguage });
     }
 
-    const outputText = payload.choices?.[0]?.message?.content;
-
-    if (!outputText) return json({ error: "Модель не вернула текстовый ответ." }, 502);
-
-    const cleaned = outputText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-    const parsed = JSON.parse(cleaned) as { translation?: string; explanation?: string; entries?: unknown[] };
-
-    if (!parsed.translation || !Array.isArray(parsed.entries)) {
-      return json({ error: "Ответ модели имеет неверный формат." }, 502);
-    }
-
-    return json({ ...parsed, sourceLanguage, targetLanguage });
+    return json({ error: "Не удалось получить перевод на нужном языке. Повторите запрос." }, 502);
   } catch (error) {
     const message = error instanceof SyntaxError
       ? "Модель вернула некорректный JSON. Повторите запрос."

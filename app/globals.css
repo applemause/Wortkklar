@@ -140,6 +140,20 @@ textarea::-webkit-scrollbar { display: none; }
 
 .answerGender { font-weight: 540; }
 
+.correction {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0 0;
+  color: var(--secondary);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.correction s { color: var(--tertiary); text-decoration-thickness: 1px; }
+.correction i { color: var(--tertiary); font-style: normal; }
+.correction span { color: var(--ink); font-weight: 520; }
+
 .nounMeta {
   display: flex;
   align-items: baseline;
@@ -191,27 +205,19 @@ textarea::-webkit-scrollbar { display: none; }
 }
 
 .morphology {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
   margin: 0;
   padding: 0;
-}
-
-.morphology > div { min-width: 0; padding-right: 18px; }
-.morphology > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
-.morphology dt {
-  margin: 0 0 6px;
-  color: var(--secondary);
-  font-size: 11px;
-  line-height: 1.3;
-}
-.morphology dd {
-  margin: 0;
   font-size: 17px;
   font-weight: 530;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
+
+.morphology span { display: inline-flex; align-items: baseline; gap: 10px; }
+.morphology i { color: var(--tertiary); font-style: normal; font-weight: 400; }
 
 .government {
   max-width: 600px;
@@ -243,11 +249,8 @@ textarea::-webkit-scrollbar { display: none; }
   .answerWord { font-size: 44px; }
   .answer > span { font-size: 15px; }
   .entries, .entries.single { margin-top: 28px; }
-  .morphology { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
-  .morphology > div { padding-right: 10px; }
-  .morphology > div + div { padding-left: 10px; }
-  .morphology dt { font-size: 10px; }
-  .morphology dd { font-size: 15px; }
+  .morphology { gap: 8px; font-size: 15px; }
+  .morphology span { gap: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
