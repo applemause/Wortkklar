@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useState } from "react";
 
-type Direction = "ru-de" | "de-ru";
 type Entry = {
   type: "noun" | "verb" | "adjective" | "phrase" | "other";
   word: string;
@@ -26,12 +25,14 @@ type TranslationResult = {
   translation: string;
   explanation: string;
   entries: Entry[];
+  sourceLanguage: "ru" | "de";
+  targetLanguage: "ru" | "de";
+  query: string;
 };
 
 const STORAGE_KEY = "wortklar-groq-settings";
 
 export default function Home() {
-  const [direction, setDirection] = useState<Direction>("ru-de");
   const [text, setText] = useState("");
   const [model, setModel] = useState("openai/gpt-oss-20b");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -50,23 +51,10 @@ export default function Home() {
     }
   }, []);
 
-  const labels = useMemo(
-    () => direction === "ru-de"
-      ? { from: "Русский", to: "Deutsch", placeholder: "Слово или фраза" }
-      : { from: "Deutsch", to: "Русский", placeholder: "Wort oder Satz" },
-    [direction]
-  );
-
   function chooseModel(nextModel: string) {
     setModel(nextModel);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ model: nextModel }));
     setSettingsOpen(false);
-  }
-
-  function swapDirection() {
-    setDirection((current) => current === "ru-de" ? "de-ru" : "ru-de");
-    setResult(null);
-    setError("");
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -79,6 +67,7 @@ export default function Home() {
   async function translate(event: FormEvent) {
     event.preventDefault();
     if (!text.trim()) return;
+    const submittedText = text.trim();
 
     setLoading(true);
     setError("");
@@ -86,11 +75,11 @@ export default function Home() {
       const response = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), direction, model: model.trim() })
+        body: JSON.stringify({ text: submittedText, model: model.trim() })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось выполнить перевод.");
-      setResult(data);
+      setResult({ ...data, query: submittedText });
     } catch (requestError) {
       setResult(null);
       setError(requestError instanceof Error ? requestError.message : "Неизвестная ошибка.");
@@ -110,12 +99,6 @@ export default function Home() {
 
       <div className="workspace">
         <form className="composer" onSubmit={translate}>
-          <button className="direction" type="button" onClick={swapDirection} aria-label="Поменять языки местами">
-            <span>{labels.from}</span>
-            <SwapIcon />
-            <span>{labels.to}</span>
-          </button>
-
           <div className="inputRow">
             <textarea
               value={text}
@@ -125,7 +108,7 @@ export default function Home() {
                 event.target.style.height = `${Math.min(event.target.scrollHeight, 240)}px`;
               }}
               onKeyDown={handleKeyDown}
-              placeholder={labels.placeholder}
+              placeholder="Слово или фраза"
               maxLength={1200}
               rows={1}
               autoFocus
@@ -141,9 +124,12 @@ export default function Home() {
         {result && (
           <section className="results" aria-live="polite">
             <div className="answer">
-              <p><AnswerText value={result.translation} /></p>
+              <small className="resultDirection">
+                {result.sourceLanguage === "de" ? "Deutsch → Русский" : "Русский → Deutsch"}
+              </small>
+              <p lang={result.targetLanguage}><AnswerText value={result.translation} /></p>
               {result.explanation && !sameText(result.explanation, result.translation) && (
-                <span>{result.explanation}</span>
+                <span lang="ru">{result.explanation}</span>
               )}
             </div>
 
@@ -152,8 +138,9 @@ export default function Home() {
                 <EntryView
                   entry={entry}
                   answer={result.translation}
-                  query={text}
+                  query={result.query}
                   explanation={result.explanation}
+                  showMeaning={result.entries.length > 1}
                   showSeparator={index > 0}
                   key={`${entry.word}-${index}`}
                 />
@@ -180,23 +167,27 @@ export default function Home() {
   );
 }
 
-function EntryView({ entry, answer, query, explanation, showSeparator }: {
+function EntryView({ entry, answer, query, explanation, showMeaning, showSeparator }: {
   entry: Entry;
   answer: string;
   query: string;
   explanation: string;
+  showMeaning: boolean;
   showSeparator: boolean;
 }) {
   const term = entry.type === "noun" && entry.article ? `${entry.article} ${entry.word}` : entry.word;
-  const showTerm = !containsText(answer, term);
-  const showTranslation = !containsText(answer, entry.translation) && !sameText(query, entry.translation);
-  const forms = grammarForms(entry, answer, showTerm);
+  const queryRepeatsTerm = sameText(query, term) || (entry.type !== "noun" && sameText(query, entry.word));
+  const showTerm = !containsText(answer, term) && !queryRepeatsTerm;
+  const showTranslation = showMeaning && !containsText(answer, entry.translation) && !sameText(query, entry.translation);
+  const forms = morphologyForms(entry);
   const showNote = entry.note && !sameText(entry.note, explanation);
 
   return (
     <article className={`entry${showSeparator ? " separated" : ""}`}>
+      <small className="entryKind">{entryTypeLabel(entry.type)}</small>
+
       {showTerm && (
-        <div className="term">
+        <div className="term" lang="de">
           {entry.type === "noun" && entry.article && (
             <span className={`article ${genderClass(entry.article)}`}>{entry.article}</span>
           )}
@@ -204,51 +195,64 @@ function EntryView({ entry, answer, query, explanation, showSeparator }: {
         </div>
       )}
 
-      {showTranslation && <p className="entryTranslation">{entry.translation}</p>}
+      {showTranslation && <p className="entryTranslation" lang="ru">{entry.translation}</p>}
 
       {forms.length > 0 && (
-        <p className="forms">
-          {forms.map((form, index) => (
-            <span key={`${form.value}-${index}`}>
-              {index > 0 && <i>·</i>}
-              {form.label && <small>{form.label}</small>}
-              {form.value}
-            </span>
+        <dl className="morphology">
+          {forms.map((form) => (
+            <div key={`${form.label}-${form.value}`}>
+              <dt>{form.label}</dt>
+              <dd lang="de">{form.value}</dd>
+            </div>
           ))}
-        </p>
+        </dl>
       )}
 
-      {entry.government && <p className="detail">{entry.government}</p>}
-      {showNote && <p className="detail">{entry.note}</p>}
+      {entry.government && (
+        <div className="annotation">
+          <small>Управление</small>
+          <p lang="de">{entry.government}</p>
+        </div>
+      )}
+
+      {showNote && (
+        <div className="annotation">
+          <small>Грамматика</small>
+          <p lang="ru">{entry.note}</p>
+        </div>
+      )}
 
       {(entry.example || entry.exampleTranslation) && (
         <div className="example">
-          {entry.example && <p>{entry.example}</p>}
-          {entry.exampleTranslation && !sameText(entry.example, entry.exampleTranslation) && <span>{entry.exampleTranslation}</span>}
+          <small>Пример</small>
+          {entry.example && <p lang="de">{entry.example}</p>}
+          {entry.exampleTranslation && !sameText(entry.example, entry.exampleTranslation) && <span lang="ru">{entry.exampleTranslation}</span>}
         </div>
       )}
     </article>
   );
 }
 
-function grammarForms(entry: Entry, answer: string, termIsVisible: boolean) {
+function morphologyForms(entry: Entry) {
   if (entry.type === "noun") {
-    return entry.plural ? [{ label: "Pl.", value: entry.plural }] : [];
+    return entry.plural ? [{ label: "Множественное", value: entry.plural }] : [];
   }
 
   if (entry.type === "verb") {
     return [
-      !termIsVisible && !containsText(answer, entry.infinitive ?? entry.word) ? { label: "", value: entry.infinitive ?? entry.word } : null,
-      entry.preterite ? { label: "", value: entry.preterite } : null,
-      entry.participle ? { label: "", value: entry.participle } : null,
-      entry.auxiliary ? { label: "", value: entry.auxiliary } : null
+      { label: "Infinitiv", value: entry.infinitive ?? entry.word },
+      entry.preterite ? { label: "Präteritum", value: entry.preterite } : null,
+      entry.participle ? {
+        label: "Perfekt",
+        value: `${entry.auxiliary === "sein" ? "ist" : "hat"} ${entry.participle}`
+      } : null
     ].filter((item): item is { label: string; value: string } => Boolean(item));
   }
 
   if (entry.type === "adjective") {
     return [
-      entry.comparative ? { label: "", value: entry.comparative } : null,
-      entry.superlative ? { label: "", value: entry.superlative } : null
+      entry.comparative ? { label: "Komparativ", value: entry.comparative } : null,
+      entry.superlative ? { label: "Superlativ", value: entry.superlative } : null
     ].filter((item): item is { label: string; value: string } => Boolean(item));
   }
 
@@ -275,6 +279,16 @@ function genderClass(article: "der" | "die" | "das") {
   return article === "der" ? "masculine" : article === "die" ? "feminine" : "neutral";
 }
 
+function entryTypeLabel(type: Entry["type"]) {
+  return {
+    noun: "Существительное",
+    verb: "Глагол",
+    adjective: "Прилагательное",
+    phrase: "Выражение",
+    other: "Разбор"
+  }[type];
+}
+
 function AnswerText({ value }: { value: string }) {
   const match = value.match(/^(der|die|das)\s+(.+)$/i);
   if (!match) return value;
@@ -285,10 +299,6 @@ function AnswerText({ value }: { value: string }) {
 
 function SettingsIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2.75v2.1M12 19.15v2.1M21.25 12h-2.1M4.85 12h-2.1M18.54 5.46l-1.49 1.49M6.95 17.05l-1.49 1.49M18.54 18.54l-1.49-1.49M6.95 6.95 5.46 5.46" /></svg>;
-}
-
-function SwapIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-3 3 3 3M5 10h13M16 17l3-3-3-3M19 14H6" /></svg>;
 }
 
 function ArrowIcon() {

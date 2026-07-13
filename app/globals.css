@@ -62,24 +62,9 @@ button { color: inherit; }
 .iconButton:hover { background: var(--control); color: var(--ink); }
 .iconButton svg { width: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.45; }
 
-.workspace { padding: clamp(66px, 14vh, 132px) 0 96px; }
+.workspace { padding: clamp(74px, 14vh, 132px) 0 96px; }
 
 .composer { border-bottom: 1px solid var(--ink); }
-
-.direction {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 0 17px;
-  border: 0;
-  background: transparent;
-  color: var(--secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.direction span:last-child { color: var(--ink); }
-.direction svg { width: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.55; }
 
 .inputRow { display: flex; align-items: flex-end; gap: 18px; }
 
@@ -143,31 +128,50 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
 
 .results { padding-top: clamp(62px, 10vw, 92px); }
 
+.resultDirection,
+.entryKind,
+.annotation small,
+.example small {
+  display: block;
+  color: var(--secondary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: .085em;
+  text-transform: uppercase;
+}
+
+.resultDirection { margin-bottom: 15px; }
+
 .answer > p {
   margin: 0;
-  font-size: clamp(42px, 9vw, 68px);
+  font-size: clamp(40px, 7vw, 60px);
   font-weight: 520;
-  line-height: 1.04;
-  letter-spacing: -0.06em;
+  line-height: 1.06;
+  letter-spacing: -0.052em;
 }
 
 .answerArticle { font-weight: 560; }
 
 .answer > span {
   display: block;
-  max-width: 560px;
-  margin-top: 18px;
+  max-width: 600px;
+  margin-top: 16px;
   color: var(--secondary);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.52;
 }
 
-.entries { margin-top: 36px; }
+.entries { margin-top: 52px; }
 
-.entry { padding: 24px 0 31px; }
-.entry.separated { border-top: 1px solid var(--line); }
+.entry {
+  padding: 28px 0 44px;
+  border-top: 1px solid var(--line);
+}
 
-.term { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.entryKind { margin-bottom: 13px; }
+
+.term { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 .term strong { font-size: 24px; font-weight: 570; letter-spacing: -0.035em; }
 .article { font-size: 17px; font-weight: 650; }
 .masculine { color: var(--masculine); }
@@ -180,43 +184,73 @@ textarea::placeholder { color: var(--tertiary); opacity: 1; }
   font-size: 15px;
 }
 
-.forms {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 7px;
-  margin: 10px 0 0;
-  color: var(--ink);
-  font-size: 16px;
-  line-height: 1.5;
+.morphology {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin: 22px 0 0;
+  padding: 17px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
-.forms span { display: inline-flex; align-items: baseline; gap: 7px; }
-.forms i { color: var(--tertiary); font-style: normal; }
-.forms small { color: var(--secondary); font-size: 11px; letter-spacing: .02em; }
-
-.detail {
-  max-width: 570px;
-  margin: 9px 0 0;
+.morphology > div { min-width: 0; padding-right: 18px; }
+.morphology > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+.morphology dt {
+  margin: 0 0 6px;
   color: var(--secondary);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.morphology dd {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 530;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
-.example { margin-top: 22px; }
-.example p { margin: 0; font-size: 16px; line-height: 1.45; }
-.example span { display: block; margin-top: 4px; color: var(--secondary); font-size: 14px; line-height: 1.5; }
+.annotation {
+  max-width: 600px;
+  margin-top: 25px;
+}
+
+.annotation p {
+  margin: 8px 0 0;
+  color: var(--secondary);
+  font-size: 15px;
+  line-height: 1.52;
+}
+
+.example {
+  margin-top: 30px;
+  padding-top: 23px;
+  border-top: 1px solid var(--line);
+}
+
+.example p { margin: 10px 0 0; font-size: 18px; line-height: 1.45; }
+.example span { display: block; margin-top: 5px; color: var(--secondary); font-size: 15px; line-height: 1.5; }
+
+.morphology + .example {
+  padding-top: 0;
+  border-top: 0;
+}
 
 @media (max-width: 600px) {
   .shell { width: min(100% - 28px, 720px); }
   .topbar { height: 58px; }
   .workspace { padding-top: 72px; }
-  .direction { padding-bottom: 14px; }
   textarea { min-height: 58px; padding-bottom: 14px; font-size: 34px; }
   .submitButton { width: 36px; height: 36px; margin-bottom: 13px; }
   .results { padding-top: 56px; }
-  .answer > p { font-size: 46px; }
-  .entries { margin-top: 28px; }
+  .answer > p { font-size: 44px; }
+  .answer > span { font-size: 15px; }
+  .entries { margin-top: 40px; }
+  .entry { padding-top: 24px; }
+  .morphology { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+  .morphology > div { padding-right: 10px; }
+  .morphology > div + div { padding-left: 10px; }
+  .morphology dt { font-size: 10px; }
+  .morphology dd { font-size: 15px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

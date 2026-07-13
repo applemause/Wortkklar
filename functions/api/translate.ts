@@ -7,7 +7,7 @@ type PagesContext = {
   };
 };
 
-const systemPrompt = `Ты — точный русско-немецкий учебный переводчик.
+const systemPrompt = `Ты — точный русско-немецкий учебный переводчик для русскоязычного ученика.
 Верни только JSON без markdown в формате:
 {
   "translation": "основной естественный перевод",
@@ -34,10 +34,16 @@ const systemPrompt = `Ты — точный русско-немецкий уче
   ]
 }
 Правила:
+- Поле translation содержит только один основной естественный перевод на целевом языке. Не повторяй исходное слово, не добавляй тире, слеши, подписи и пояснения.
+- Все explanation, entries[].translation и entries[].note пиши только по-русски.
+- Немецкий язык используй только в entries[].word, грамматических формах, government и example.
+- exampleTranslation всегда пиши по-русски.
+- Для одного слова возвращай ровно один entry. Не дублируй одну и ту же информацию в explanation и note.
 - При переводе с русского на немецкий всегда разбирай ключевые немецкие слова результата.
 - Для существительных обязательно указывай артикль и множественное число.
 - Для глаголов обязательно указывай Infinitiv, Präteritum, Partizip II и haben/sein.
-- Для отделяемых, возвратных глаголов и управления показывай полную словарную форму.
+- Для отделяемых и возвратных глаголов показывай полную словарную форму. У отделяемых глаголов указывай корректную форму Präteritum, например "bog ab", и Partizip II.
+- В explanation кратко объясни значение или различие употребления, но не перечисляй формы из entry.
 - Не придумывай редкие значения без необходимости.
 - Пояснение должно быть коротким и понятным ученику A2-B1.
 - JSON должен быть валидным.`;
@@ -95,7 +101,8 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
   try {
     const body = await context.request.json() as Record<string, unknown>;
     const text = typeof body.text === "string" ? body.text.trim() : "";
-    const direction = body.direction === "de-ru" ? "de-ru" : "ru-de";
+    const sourceLanguage: "ru" | "de" = /[А-Яа-яЁё]/.test(text) ? "ru" : "de";
+    const targetLanguage: "ru" | "de" = sourceLanguage === "ru" ? "de" : "ru";
     const apiKey = (
       context.env.apikey ??
       context.env.APIKEY ??
@@ -108,9 +115,9 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
     if (!text) return json({ error: "Введите текст для перевода." }, 400);
     if (!apiKey) return json({ error: "Секрет Groq API не настроен на сервере." }, 500);
 
-    const userPrompt = direction === "ru-de"
-      ? `Переведи с русского на немецкий и сделай учебный разбор: ${text}`
-      : `Переведи с немецкого на русский и сделай учебный разбор немецких слов: ${text}`;
+    const userPrompt = sourceLanguage === "ru"
+      ? `Исходный язык: русский. Целевой язык: немецкий. Переведи и разбери немецкий результат. Все пояснения дай по-русски. Текст: ${text}`
+      : `Исходный язык: немецкий. Целевой язык: русский. Переведи и разбери немецкий оригинал. Все пояснения дай по-русски. Текст: ${text}`;
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -151,13 +158,13 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
     if (!outputText) return json({ error: "Модель не вернула текстовый ответ." }, 502);
 
     const cleaned = outputText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-    const parsed = JSON.parse(cleaned) as { translation?: string; entries?: unknown[] };
+    const parsed = JSON.parse(cleaned) as { translation?: string; explanation?: string; entries?: unknown[] };
 
     if (!parsed.translation || !Array.isArray(parsed.entries)) {
       return json({ error: "Ответ модели имеет неверный формат." }, 502);
     }
 
-    return json(parsed);
+    return json({ ...parsed, sourceLanguage, targetLanguage });
   } catch (error) {
     const message = error instanceof SyntaxError
       ? "Модель вернула некорректный JSON. Повторите запрос."
