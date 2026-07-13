@@ -42,6 +42,7 @@ const systemPrompt = `Ты — точный русско-немецкий уче
 - kind="sentence" для полноценного предложения. Для предложения верни только translation, correctedInput при необходимости, пустую explanation и пустой массив entries. Не делай словарный разбор и не создавай примеры.
 - kind="term" для одного слова или короткого словарного выражения. Для него верни ровно один entry и три примера.
 - Поле translation содержит только один основной естественный перевод на целевом языке. Не повторяй исходное слово, не добавляй тире, слеши, подписи и пояснения.
+- Если целевой язык русский, translation никогда не должен начинаться с немецкого артикля der, die или das. Артикль указывай только в немецких словарных данных entry.
 - Все explanation и entries[].translation пиши только по-русски.
 - Немецкий язык используй только в entries[].word, грамматических формах, government и examples[].german.
 - examples[].russian всегда пиши по-русски. Для kind="term" дай ровно три коротких, естественных и разных примера уровня A2-B1.
@@ -125,6 +126,12 @@ function hasExpectedLanguage(value: string, targetLanguage: "ru" | "de") {
   return targetLanguage === "ru" ? hasCyrillic : !hasCyrillic && /[A-Za-zÄÖÜäöüß]/.test(value);
 }
 
+function normalizeTranslation(value: string, targetLanguage: "ru" | "de") {
+  return targetLanguage === "ru"
+    ? value.replace(/^(der|die|das)\s+(?=[А-Яа-яЁё])/i, "").trim()
+    : value.trim();
+}
+
 export async function onRequestPost(context: PagesContext): Promise<Response> {
   try {
     const body = await context.request.json() as Record<string, unknown>;
@@ -190,6 +197,9 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
 
       const cleaned = outputText.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
       const parsed = JSON.parse(cleaned) as ParsedTranslation;
+      if (parsed.translation) {
+        parsed.translation = normalizeTranslation(parsed.translation, targetLanguage);
+      }
       const validShape = parsed.translation && parsed.kind && Array.isArray(parsed.entries);
       const validTerm = parsed.kind !== "term" || parsed.entries!.length === 1;
 

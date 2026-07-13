@@ -270,17 +270,17 @@ function AnswerText({ value, entry, targetLanguage }: {
   entry?: Entry;
   targetLanguage: "ru" | "de";
 }) {
+  if (targetLanguage === "ru") {
+    return value.replace(/^(der|die|das)\s+(?=[А-Яа-яЁё])/i, "");
+  }
+
   if (targetLanguage === "de" && entry?.type === "noun" && entry.article) {
     const hasArticle = /^(der|die|das)\s+/i.test(value);
     const noun = hasArticle ? value : `${entry.article} ${value}`;
     return <span className={`answerGender ${genderClass(entry.article)}`}>{noun}</span>;
   }
 
-  const match = value.match(/^(der|die|das)\s+(.+)$/i);
-  if (!match) return value;
-
-  const article = match[1].toLocaleLowerCase("de-DE") as "der" | "die" | "das";
-  return <span className={`answerGender ${genderClass(article)}`}>{value}</span>;
+  return value;
 }
 
 function NounMeta({ entry, showHeadword }: { entry: Entry; showHeadword: boolean }) {
