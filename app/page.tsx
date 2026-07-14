@@ -35,6 +35,7 @@ type TranslationResult = {
 
 export default function Home() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const requestInFlightRef = useRef(false);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -49,8 +50,9 @@ export default function Home() {
 
   async function requestTranslation(value: string) {
     const submittedText = value.trim();
-    if (!submittedText) return;
+    if (!submittedText || requestInFlightRef.current) return;
 
+    requestInFlightRef.current = true;
     setLoading(true);
     setError("");
     try {
@@ -66,6 +68,7 @@ export default function Home() {
       setResult(null);
       setError(requestError instanceof Error ? requestError.message : "Неизвестная ошибка.");
     } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
     }
   }
@@ -76,14 +79,13 @@ export default function Home() {
   }
 
   function translateWord(word: string) {
-    if (loading) return;
+    if (requestInFlightRef.current) return;
     setText(word);
     requestAnimationFrame(() => {
       const input = inputRef.current;
       if (!input) return;
       input.style.height = "0px";
       input.style.height = `${Math.min(input.scrollHeight, 240)}px`;
-      input.focus();
     });
     void requestTranslation(word);
   }
@@ -113,7 +115,17 @@ export default function Home() {
               rows={1}
               autoFocus
             />
-            <button className="submitButton" type="submit" disabled={!text.trim() || loading} aria-label="Перевести">
+            <button
+              className="submitButton"
+              type="button"
+              disabled={!text.trim() || loading}
+              aria-label="Перевести"
+              onClick={() => void requestTranslation(text)}
+              onTouchEnd={(event) => {
+                event.preventDefault();
+                void requestTranslation(text);
+              }}
+            >
               {loading ? <span className="loader" /> : <ArrowIcon />}
             </button>
           </div>
@@ -314,6 +326,10 @@ function ClickableText({ text, onWord, disabled }: {
         type="button"
         disabled={disabled}
         onClick={() => onWord(part)}
+        onTouchEnd={(event) => {
+          event.preventDefault();
+          onWord(part);
+        }}
         key={`${part}-${index}`}
       >
         {part}
