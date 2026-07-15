@@ -15,7 +15,11 @@ type Entry = {
   auxiliary: "haben" | "sein" | null;
   comparative: string | null;
   superlative: string | null;
-  government: string | null;
+  government: Array<{
+    pattern: string;
+    case: "Akkusativ" | "Dativ" | "Genitiv" | null;
+    meaning: string;
+  }>;
   examples: Array<{
     german: string;
     russian: string;
@@ -215,8 +219,17 @@ function EntryView({ entry, showGrammar, onWord, disabled }: {
         </p>
       )}
 
-      {showGrammar && entry.government && (
-        <p className="government" lang="de">{entry.government}</p>
+      {entry.government.length > 0 && (
+        <div className="governmentList">
+          {entry.government.map((rule, index) => (
+            <div className="governmentRule" key={`${rule.pattern}-${index}`}>
+              <span lang="de">{rule.pattern}</span>
+              {rule.case && <small>{caseLabel(rule.case)}</small>}
+              <i>—</i>
+              <span lang="ru">{rule.meaning}</span>
+            </div>
+          ))}
+        </div>
       )}
 
       {entry.examples.length > 0 && (
@@ -244,10 +257,14 @@ function AlternativeMeanings({ entries, targetLanguage, query }: {
   return (
     <p className="alternativeMeanings" lang={targetLanguage}>
       {alternatives.map((entry, index) => {
+        const mainLexeme = entries[0]?.infinitive ?? entries[0]?.word;
+        const entryLexeme = entry.infinitive ?? entry.word;
         const germanTerm = entry.type === "noun" && entry.article
           ? `${entry.article} ${entry.word}`
-          : entry.infinitive ?? entry.word;
-        const label = targetLanguage === "ru" ? entry.translation : germanTerm;
+          : entryLexeme;
+        const label = targetLanguage === "ru"
+          ? addQualifier(entry.translation, sameText(entryLexeme, mainLexeme) ? null : entryLexeme)
+          : germanTerm;
         const qualifier = targetLanguage === "de" && !sameText(entry.translation, query)
           ? entry.translation
           : null;
@@ -263,6 +280,19 @@ function AlternativeMeanings({ entries, targetLanguage, query }: {
       })}
     </p>
   );
+}
+
+function addQualifier(value: string, qualifier: string | null) {
+  if (!qualifier) return value;
+  return value.trim().endsWith(")")
+    ? value.trim().replace(/\)$/, `; ${qualifier})`)
+    : `${value.trim()} (${qualifier})`;
+}
+
+function caseLabel(value: "Akkusativ" | "Dativ" | "Genitiv") {
+  if (value === "Akkusativ") return "Akk. (винительный)";
+  if (value === "Dativ") return "Dat. (дательный)";
+  return "Gen. (родительный)";
 }
 
 function morphologyForms(entry: Entry) {

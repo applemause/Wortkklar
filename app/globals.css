@@ -208,13 +208,25 @@ textarea::-webkit-scrollbar { display: none; }
 .morphology span { display: inline-flex; align-items: baseline; gap: 10px; }
 .morphology i { color: var(--tertiary); font-style: normal; font-weight: 400; }
 
-.government {
+.governmentList {
   max-width: 600px;
   margin: 24px 0 0;
-  color: var(--secondary);
   font-size: 15px;
   line-height: 1.52;
 }
+
+.governmentRule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.governmentRule + .governmentRule { margin-top: 8px; }
+.governmentRule > span:first-child { color: var(--ink); font-weight: 520; }
+.governmentRule small { color: var(--secondary); font: inherit; }
+.governmentRule i { color: var(--tertiary); font-style: normal; }
+.governmentRule > span:last-child { color: var(--secondary); }
 
 .examples {
   margin-top: 36px;
@@ -231,7 +243,7 @@ textarea::-webkit-scrollbar { display: none; }
   border-top: 0;
 }
 .morphology + .examples,
-.government + .examples { margin-top: 24px; }
+.governmentList + .examples { margin-top: 24px; }
 
 .example + .example { margin-top: 24px; }
 .example p { margin: 0; font-size: 18px; line-height: 1.45; }
