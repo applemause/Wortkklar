@@ -159,10 +159,13 @@ textarea::-webkit-scrollbar { display: none; }
 .correction span { color: var(--ink); font-weight: 520; }
 
 .alternativeMeanings {
-  margin: 10px 0 0;
-  color: var(--secondary);
-  font-size: 17px;
-  line-height: 1.5;
+  max-width: 640px;
+  margin: 14px 0 0;
+  color: #484843;
+  font-size: 20px;
+  font-weight: 490;
+  line-height: 1.42;
+  letter-spacing: -0.018em;
 }
 
 .alternativeMeaning:not(:last-child)::after { content: ", "; color: var(--secondary); }
@@ -217,7 +220,7 @@ textarea::-webkit-scrollbar { display: none; }
 
 .governmentList {
   max-width: 600px;
-  margin: 28px 0 0;
+  margin: 18px 0 0;
   font-size: 15px;
   line-height: 1.52;
 }
@@ -235,6 +238,53 @@ textarea::-webkit-scrollbar { display: none; }
 .governmentRule i { color: var(--tertiary); font-style: normal; }
 .governmentRule > span:last-child { color: var(--secondary); }
 
+.grammarDisclosure {
+  margin: 24px 0 0;
+  color: var(--secondary);
+}
+
+.grammarDisclosure summary {
+  width: fit-content;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 0;
+  list-style: none;
+  color: var(--tertiary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.grammarDisclosure summary::-webkit-details-marker { display: none; }
+.grammarDisclosure summary svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform .16s ease;
+}
+.grammarDisclosure[open] summary svg { transform: rotate(180deg); }
+
+.grammarContent { padding: 8px 0 2px; }
+.grammarNotes { max-width: 600px; margin: 0; }
+.grammarNote {
+  display: grid;
+  grid-template-columns: minmax(84px, 112px) 1fr;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.grammarNote + .grammarNote { margin-top: 7px; }
+.grammarNote dt { color: var(--tertiary); }
+.grammarNote dd { margin: 0; color: var(--secondary); }
+
 .examples {
   margin-top: 36px;
   padding-top: 28px;
@@ -250,7 +300,7 @@ textarea::-webkit-scrollbar { display: none; }
   border-top: 0;
 }
 
-.governmentList + .entries { margin-top: 30px; }
+.grammarDisclosure + .entries { margin-top: 24px; }
 
 .example + .example { margin-top: 24px; }
 .example p { margin: 0; font-size: 18px; line-height: 1.45; }
@@ -293,6 +343,7 @@ textarea::-webkit-scrollbar { display: none; }
   .submitButton { width: 36px; height: 36px; margin-bottom: 13px; }
   .results { padding-top: 56px; }
   .answerWord { font-size: 44px; }
+  .alternativeMeanings { font-size: 19px; }
   .entries, .entries.single { margin-top: 28px; }
   .morphology { gap: 8px; font-size: 15px; }
   .morphology span { gap: 8px; }

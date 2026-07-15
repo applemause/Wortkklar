@@ -20,6 +20,10 @@ type Entry = {
     case: "Akkusativ" | "Dativ" | "Genitiv" | null;
     meaning: string;
   }>;
+  grammarNotes: Array<{
+    label: string;
+    value: string;
+  }>;
   examples: Array<{
     german: string;
     russian: string;
@@ -197,7 +201,7 @@ export default function Home() {
               )}
             </div>
 
-            {result.kind === "term" && <GovernmentOverview entries={result.entries} />}
+            {result.kind === "term" && <GrammarDisclosure entries={result.entries} />}
 
             {result.kind === "term" && result.entries.length > 0 && (
               <div className={`entries ${result.entries.length === 1 ? "single" : "multiple"}`}>
@@ -279,6 +283,40 @@ function GovernmentOverview({ entries }: { entries: Entry[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function GrammarDisclosure({ entries }: { entries: Entry[] }) {
+  const notes = entries.flatMap((entry) => entry.grammarNotes);
+  const uniqueNotes = notes.filter((note, index) => (
+    notes.findIndex((candidate) => (
+      candidate.label === note.label && candidate.value === note.value
+    )) === index
+  ));
+  const hasGovernment = entries.some((entry) => entry.government.length > 0);
+
+  if (uniqueNotes.length === 0 && !hasGovernment) return null;
+
+  return (
+    <details className="grammarDisclosure">
+      <summary>
+        <span>грамматика</span>
+        <ChevronIcon />
+      </summary>
+      <div className="grammarContent">
+        {uniqueNotes.length > 0 && (
+          <dl className="grammarNotes">
+            {uniqueNotes.map((note, index) => (
+              <div className="grammarNote" key={`${note.label}-${note.value}-${index}`}>
+                <dt>{note.label}</dt>
+                <dd>{note.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {hasGovernment && <GovernmentOverview entries={entries} />}
+      </div>
+    </details>
   );
 }
 
@@ -432,4 +470,8 @@ function ArrowIcon() {
 
 function CloseIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" /></svg>;
+}
+
+function ChevronIcon() {
+  return <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>;
 }
