@@ -40,12 +40,16 @@ const systemPrompt = `Ты — точный русско-немецкий уче
 Правила:
 - Сначала исправь орфографию исходного текста. correctedInput содержит только исправленный исходный текст, если он отличается хотя бы регистром или буквой; иначе null. Никогда не помещай туда перевод.
 - kind="sentence" для полноценного предложения. Для предложения верни только translation, correctedInput при необходимости, пустую explanation и пустой массив entries. Не делай словарный разбор и не создавай примеры.
-- kind="term" для одного слова или короткого словарного выражения. Для него верни ровно один entry и три примера.
+- kind="term" для одного слова или короткого словарного выражения. Для него верни от одного до трёх entries и по три примера для каждого.
+- Первый entry — основное, самое частое значение и должен соответствовать полю translation.
+- Добавляй второй или третий entry только для действительно частых самостоятельных значений или частых вариантов перевода. Не добавляй редкие, книжные и устаревшие значения и не заполняй список близкими синонимами ради количества.
+- При переводе немецкого слова на русский для разных значений можно повторять немецкое entry.word, но entries[].translation должны ясно и коротко различать русские значения.
+- При переводе русского слова на немецкий каждое частое немецкое соответствие оформляй отдельным entry со своей грамматикой.
 - Поле translation содержит только один основной естественный перевод на целевом языке. Не повторяй исходное слово, не добавляй тире, слеши, подписи и пояснения.
 - Если целевой язык русский, translation никогда не должен начинаться с немецкого артикля der, die или das. Артикль указывай только в немецких словарных данных entry.
 - Все explanation и entries[].translation пиши только по-русски.
 - Немецкий язык используй только в entries[].word, грамматических формах, government и examples[].german.
-- examples[].russian всегда пиши по-русски. Для kind="term" дай ровно три коротких, естественных и разных примера уровня A2-B1.
+- examples[].russian всегда пиши по-русски. Для каждого entry дай ровно три коротких, естественных и разных примера уровня A2-B1, показывающих именно это значение. Не смешивай разные значения в примерах одного entry.
 - При переводе с русского на немецкий всегда разбирай ключевые немецкие слова результата.
 - Если основной немецкий перевод — существительное, translation обязательно начинай с артикля der, die или das.
 - Для немецкого существительного всегда нормализуй entry.word в единственное число и укажи его артикль, даже если пользователь ввёл множественное число. В plural укажи множественное число без артикля die.
@@ -65,6 +69,7 @@ const translationSchema = {
     explanation: { type: "string" },
     entries: {
       type: "array",
+      maxItems: 3,
       items: {
         type: "object",
         properties: {
@@ -171,7 +176,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
             { role: "user", content: `${userPrompt}${retryInstruction}` }
           ],
           reasoning_effort: "medium",
-          max_completion_tokens: 2200,
+          max_completion_tokens: 3600,
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -201,7 +206,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
         parsed.translation = normalizeTranslation(parsed.translation, targetLanguage);
       }
       const validShape = parsed.translation && parsed.kind && Array.isArray(parsed.entries);
-      const validTerm = parsed.kind !== "term" || parsed.entries!.length === 1;
+      const validTerm = parsed.kind !== "term" || (parsed.entries!.length >= 1 && parsed.entries!.length <= 3);
 
       if (!validShape || !validTerm || !hasExpectedLanguage(parsed.translation!, targetLanguage)) {
         continue;

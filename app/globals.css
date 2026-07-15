@@ -198,9 +198,11 @@ textarea::-webkit-scrollbar { display: none; }
 .neutral { color: var(--neutral); }
 
 .entryTranslation {
-  margin: 5px 0 0;
-  color: var(--secondary);
-  font-size: 15px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 530;
+  line-height: 1.4;
 }
 
 .morphology {
@@ -233,6 +235,11 @@ textarea::-webkit-scrollbar { display: none; }
 }
 
 .entries.single .examples { margin-top: 0; }
+.entries:not(.single) .examples {
+  margin-top: 20px;
+  padding-top: 0;
+  border-top: 0;
+}
 
 .example + .example { margin-top: 24px; }
 .example p { margin: 0; font-size: 18px; line-height: 1.45; }

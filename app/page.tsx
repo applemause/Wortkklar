@@ -163,7 +163,7 @@ export default function Home() {
                   <s>{result.query}</s><i>→</i><span>{result.correctedInput}</span>
                 </p>
               )}
-              {result.kind === "term" && result.entries.length === 1 && result.entries[0]?.type === "noun" && (
+              {result.kind === "term" && result.entries[0]?.type === "noun" && (
                 <NounMeta entry={result.entries[0]} showHeadword={result.targetLanguage !== "de"} />
               )}
               {result.explanation && !sameText(result.explanation, result.translation) && (
@@ -180,6 +180,7 @@ export default function Home() {
                     query={result.query}
                     showMeaning={result.entries.length > 1}
                     showSeparator={index > 0}
+                    showGrammar={result.entries.findIndex((candidate) => sameText(candidate.word, entry.word)) === index}
                     onWord={translateWord}
                     disabled={loading}
                     key={`${entry.word}-${index}`}
@@ -195,17 +196,18 @@ export default function Home() {
   );
 }
 
-function EntryView({ entry, answer, query, showMeaning, showSeparator, onWord, disabled }: {
+function EntryView({ entry, answer, query, showMeaning, showSeparator, showGrammar, onWord, disabled }: {
   entry: Entry;
   answer: string;
   query: string;
   showMeaning: boolean;
   showSeparator: boolean;
+  showGrammar: boolean;
   onWord: (word: string) => void;
   disabled: boolean;
 }) {
   const term = entry.type === "noun" && entry.article ? `${entry.article} ${entry.word}` : entry.word;
-  const queryRepeatsTerm = sameText(query, term) || (entry.type !== "noun" && sameText(query, entry.word));
+  const queryRepeatsTerm = sameText(query, term) || sameText(query, entry.word);
   const showTerm = !containsText(answer, term) && !queryRepeatsTerm;
   const showTranslation = showMeaning && !containsText(answer, entry.translation) && !sameText(query, entry.translation);
   const forms = morphologyForms(entry);
@@ -223,7 +225,11 @@ function EntryView({ entry, answer, query, showMeaning, showSeparator, onWord, d
 
       {showTranslation && <p className="entryTranslation" lang="ru">{entry.translation}</p>}
 
-      {forms.length > 0 && (
+      {entry.type === "noun" && showTerm && (
+        <NounMeta entry={entry} showHeadword={false} />
+      )}
+
+      {showGrammar && forms.length > 0 && (
         <p className="morphology" lang="de">
           {forms.map((form, index) => (
             <span key={form}>
