@@ -129,6 +129,11 @@ textarea::-webkit-scrollbar { display: none; }
 
 .results { padding-top: clamp(62px, 10vw, 92px); }
 
+.results.sourceDetails { padding-top: 20px; }
+.sourceLexemeDetails .morphology,
+.sourceLexemeDetails .nounMeta { margin-top: 0; }
+.sourceDetails .answer { margin-top: clamp(52px, 9vw, 76px); }
+
 .answerWord {
   margin: 0;
   font-size: clamp(40px, 7vw, 60px);
@@ -205,12 +210,14 @@ textarea::-webkit-scrollbar { display: none; }
   line-height: 1.45;
 }
 
+.answer .morphology { margin-top: 12px; }
+
 .morphology span { display: inline-flex; align-items: baseline; gap: 10px; }
 .morphology i { color: var(--tertiary); font-style: normal; font-weight: 400; }
 
 .governmentList {
   max-width: 600px;
-  margin: 24px 0 0;
+  margin: 28px 0 0;
   font-size: 15px;
   line-height: 1.52;
 }
@@ -242,8 +249,8 @@ textarea::-webkit-scrollbar { display: none; }
   padding-top: 0;
   border-top: 0;
 }
-.morphology + .examples,
-.governmentList + .examples { margin-top: 24px; }
+
+.governmentList + .entries { margin-top: 30px; }
 
 .example + .example { margin-top: 24px; }
 .example p { margin: 0; font-size: 18px; line-height: 1.45; }

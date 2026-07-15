@@ -45,6 +45,13 @@ export default function Home() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<TranslationResult | null>(null);
   const hasCurrentTranslation = Boolean(result && text === result.query);
+  const primaryEntry = result?.entries[0];
+  const hasSourceDetails = Boolean(
+    result?.kind === "term" &&
+    result.sourceLanguage === "de" &&
+    primaryEntry &&
+    (primaryEntry.type === "noun" || morphologyForms(primaryEntry).length > 0)
+  );
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -153,7 +160,17 @@ export default function Home() {
         {error && <p className="errorMessage">{error}</p>}
 
         {result && (
-          <section className="results" aria-live="polite">
+          <section className={`results${hasSourceDetails ? " sourceDetails" : ""}`} aria-live="polite">
+            {hasSourceDetails && primaryEntry && (
+              <div className="sourceLexemeDetails">
+                {primaryEntry.type === "noun" ? (
+                  <NounMeta entry={primaryEntry} showHeadword />
+                ) : (
+                  <Morphology entry={primaryEntry} />
+                )}
+              </div>
+            )}
+
             <div className="answer">
               <p className="answerWord" lang={result.targetLanguage}>
                 {result.kind === "sentence" ? (
@@ -167,22 +184,26 @@ export default function Home() {
                 targetLanguage={result.targetLanguage}
                 query={result.query}
               />
+              {result.kind === "term" && result.sourceLanguage !== "de" && primaryEntry && (
+                <Morphology entry={primaryEntry} />
+              )}
               {result.correctedInput && result.correctedInput.trim() !== result.query.trim() && (
                 <p className="correction">
                   <s>{result.query}</s><i>→</i><span>{result.correctedInput}</span>
                 </p>
               )}
-              {result.kind === "term" && result.entries[0]?.type === "noun" && (
-                <NounMeta entry={result.entries[0]} showHeadword={result.targetLanguage !== "de"} />
+              {result.kind === "term" && result.targetLanguage === "de" && primaryEntry?.type === "noun" && (
+                <NounMeta entry={primaryEntry} showHeadword={false} />
               )}
             </div>
+
+            {result.kind === "term" && <GovernmentOverview entries={result.entries} />}
 
             {result.kind === "term" && result.entries.length > 0 && (
               <div className={`entries ${result.entries.length === 1 ? "single" : "multiple"}`}>
                 {result.entries.map((entry, index) => (
                   <EntryView
                     entry={entry}
-                    showGrammar={index === 0}
                     onWord={translateWord}
                     disabled={loading}
                     key={`${entry.word}-${index}`}
@@ -198,40 +219,13 @@ export default function Home() {
   );
 }
 
-function EntryView({ entry, showGrammar, onWord, disabled }: {
+function EntryView({ entry, onWord, disabled }: {
   entry: Entry;
-  showGrammar: boolean;
   onWord: (word: string) => void;
   disabled: boolean;
 }) {
-  const forms = morphologyForms(entry);
-
   return (
     <article className="entry">
-      {showGrammar && forms.length > 0 && (
-        <p className="morphology" lang="de">
-          {forms.map((form, index) => (
-            <span key={form}>
-              {index > 0 && <i>·</i>}
-              {form}
-            </span>
-          ))}
-        </p>
-      )}
-
-      {entry.government.length > 0 && (
-        <div className="governmentList">
-          {entry.government.map((rule, index) => (
-            <div className="governmentRule" key={`${rule.pattern}-${index}`}>
-              <span lang="de">{rule.pattern}</span>
-              {rule.case && <small>{caseLabel(rule.case)}</small>}
-              <i>—</i>
-              <span lang="ru">{rule.meaning}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {entry.examples.length > 0 && (
         <div className="examples">
           {entry.examples.map((example, index) => (
@@ -243,6 +237,48 @@ function EntryView({ entry, showGrammar, onWord, disabled }: {
         </div>
       )}
     </article>
+  );
+}
+
+function Morphology({ entry }: { entry: Entry }) {
+  const forms = morphologyForms(entry);
+  if (forms.length === 0) return null;
+
+  return (
+    <p className="morphology" lang="de">
+      {forms.map((form, index) => (
+        <span key={form}>
+          {index > 0 && <i>·</i>}
+          {form}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function GovernmentOverview({ entries }: { entries: Entry[] }) {
+  const rules = entries.flatMap((entry) => entry.government);
+  const uniqueRules = rules.filter((rule, index) => (
+    rules.findIndex((candidate) => (
+      candidate.pattern === rule.pattern &&
+      candidate.case === rule.case &&
+      candidate.meaning === rule.meaning
+    )) === index
+  ));
+
+  if (uniqueRules.length === 0) return null;
+
+  return (
+    <div className="governmentList">
+      {uniqueRules.map((rule, index) => (
+        <div className="governmentRule" key={`${rule.pattern}-${index}`}>
+          <span lang="de">{rule.pattern}</span>
+          {rule.case && <small>{caseLabel(rule.case)}</small>}
+          <i>—</i>
+          <span lang="ru">{rule.meaning}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
