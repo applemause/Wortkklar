@@ -153,6 +153,19 @@ textarea::-webkit-scrollbar { display: none; }
 .correction i { color: var(--tertiary); font-style: normal; }
 .correction span { color: var(--ink); font-weight: 520; }
 
+.alternativeMeanings {
+  margin: 10px 0 0;
+  color: var(--secondary);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.alternativeMeaning:not(:last-child)::after { content: ", "; color: var(--secondary); }
+.alternativeMeaning .masculine,
+.alternativeMeaning .feminine,
+.alternativeMeaning .neutral { font-weight: 560; }
+.alternativeMeaning small { color: var(--secondary); font: inherit; }
+
 .nounMeta {
   display: flex;
   align-items: baseline;
@@ -168,42 +181,17 @@ textarea::-webkit-scrollbar { display: none; }
 .nounMeta .feminine,
 .nounMeta .neutral { font-weight: 560; }
 
-.answer > span {
-  display: block;
-  max-width: 600px;
-  margin-top: 16px;
-  color: var(--secondary);
-  font-size: 16px;
-  line-height: 1.52;
-}
-
 .entries { margin-top: 34px; }
 .entries.single { margin-top: 30px; }
+.entries.multiple { margin-top: 30px; }
 
 .entry {
   padding: 0 0 44px;
 }
 
-.entry.separated {
-  margin-top: 32px;
-  padding-top: 32px;
-  border-top: 1px solid var(--line);
-}
-
-.term { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
-.term strong { font-size: 24px; font-weight: 570; letter-spacing: -0.035em; }
-.article { font-size: 17px; font-weight: 650; }
 .masculine { color: var(--masculine); }
 .feminine { color: var(--feminine); }
 .neutral { color: var(--neutral); }
-
-.entryTranslation {
-  margin: 0;
-  color: var(--ink);
-  font-size: 19px;
-  font-weight: 530;
-  line-height: 1.4;
-}
 
 .morphology {
   display: flex;
@@ -235,11 +223,15 @@ textarea::-webkit-scrollbar { display: none; }
 }
 
 .entries.single .examples { margin-top: 0; }
-.entries:not(.single) .examples {
-  margin-top: 20px;
+.entries.multiple .entry { padding-bottom: 0; }
+.entries.multiple .entry + .entry { margin-top: 24px; }
+.entries.multiple .examples {
+  margin-top: 0;
   padding-top: 0;
   border-top: 0;
 }
+.morphology + .examples,
+.government + .examples { margin-top: 24px; }
 
 .example + .example { margin-top: 24px; }
 .example p { margin: 0; font-size: 18px; line-height: 1.45; }
@@ -282,7 +274,6 @@ textarea::-webkit-scrollbar { display: none; }
   .submitButton { width: 36px; height: 36px; margin-bottom: 13px; }
   .results { padding-top: 56px; }
   .answerWord { font-size: 44px; }
-  .answer > span { font-size: 15px; }
   .entries, .entries.single { margin-top: 28px; }
   .morphology { gap: 8px; font-size: 15px; }
   .morphology span { gap: 8px; }

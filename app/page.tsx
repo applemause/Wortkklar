@@ -158,6 +158,11 @@ export default function Home() {
                   <AnswerText value={result.translation} entry={result.entries[0]} targetLanguage={result.targetLanguage} />
                 )}
               </p>
+              <AlternativeMeanings
+                entries={result.entries}
+                targetLanguage={result.targetLanguage}
+                query={result.query}
+              />
               {result.correctedInput && result.correctedInput.trim() !== result.query.trim() && (
                 <p className="correction">
                   <s>{result.query}</s><i>→</i><span>{result.correctedInput}</span>
@@ -166,21 +171,14 @@ export default function Home() {
               {result.kind === "term" && result.entries[0]?.type === "noun" && (
                 <NounMeta entry={result.entries[0]} showHeadword={result.targetLanguage !== "de"} />
               )}
-              {result.explanation && !sameText(result.explanation, result.translation) && (
-                <span lang="ru">{result.explanation}</span>
-              )}
             </div>
 
             {result.kind === "term" && result.entries.length > 0 && (
-              <div className={`entries${result.entries.length === 1 ? " single" : ""}`}>
+              <div className={`entries ${result.entries.length === 1 ? "single" : "multiple"}`}>
                 {result.entries.map((entry, index) => (
                   <EntryView
                     entry={entry}
-                    answer={result.translation}
-                    query={result.query}
-                    showMeaning={result.entries.length > 1}
-                    showSeparator={index > 0}
-                    showGrammar={result.entries.findIndex((candidate) => sameText(candidate.word, entry.word)) === index}
+                    showGrammar={index === 0}
                     onWord={translateWord}
                     disabled={loading}
                     key={`${entry.word}-${index}`}
@@ -196,39 +194,16 @@ export default function Home() {
   );
 }
 
-function EntryView({ entry, answer, query, showMeaning, showSeparator, showGrammar, onWord, disabled }: {
+function EntryView({ entry, showGrammar, onWord, disabled }: {
   entry: Entry;
-  answer: string;
-  query: string;
-  showMeaning: boolean;
-  showSeparator: boolean;
   showGrammar: boolean;
   onWord: (word: string) => void;
   disabled: boolean;
 }) {
-  const term = entry.type === "noun" && entry.article ? `${entry.article} ${entry.word}` : entry.word;
-  const queryRepeatsTerm = sameText(query, term) || sameText(query, entry.word);
-  const showTerm = !containsText(answer, term) && !queryRepeatsTerm;
-  const showTranslation = showMeaning && !containsText(answer, entry.translation) && !sameText(query, entry.translation);
   const forms = morphologyForms(entry);
 
   return (
-    <article className={`entry${showSeparator ? " separated" : ""}`}>
-      {showMeaning && showTerm && (
-        <div className="term" lang="de">
-          {entry.type === "noun" && entry.article && (
-            <span className={`article ${genderClass(entry.article)}`}>{entry.article}</span>
-          )}
-          <strong>{entry.word}</strong>
-        </div>
-      )}
-
-      {showTranslation && <p className="entryTranslation" lang="ru">{entry.translation}</p>}
-
-      {entry.type === "noun" && showTerm && (
-        <NounMeta entry={entry} showHeadword={false} />
-      )}
-
+    <article className="entry">
       {showGrammar && forms.length > 0 && (
         <p className="morphology" lang="de">
           {forms.map((form, index) => (
@@ -240,7 +215,7 @@ function EntryView({ entry, answer, query, showMeaning, showSeparator, showGramm
         </p>
       )}
 
-      {entry.government && (
+      {showGrammar && entry.government && (
         <p className="government" lang="de">{entry.government}</p>
       )}
 
@@ -255,6 +230,38 @@ function EntryView({ entry, answer, query, showMeaning, showSeparator, showGramm
         </div>
       )}
     </article>
+  );
+}
+
+function AlternativeMeanings({ entries, targetLanguage, query }: {
+  entries: Entry[];
+  targetLanguage: "ru" | "de";
+  query: string;
+}) {
+  const alternatives = entries.slice(1);
+  if (alternatives.length === 0) return null;
+
+  return (
+    <p className="alternativeMeanings" lang={targetLanguage}>
+      {alternatives.map((entry, index) => {
+        const germanTerm = entry.type === "noun" && entry.article
+          ? `${entry.article} ${entry.word}`
+          : entry.infinitive ?? entry.word;
+        const label = targetLanguage === "ru" ? entry.translation : germanTerm;
+        const qualifier = targetLanguage === "de" && !sameText(entry.translation, query)
+          ? entry.translation
+          : null;
+
+        return (
+          <span className="alternativeMeaning" key={`${entry.word}-${entry.translation}-${index}`}>
+            <span className={targetLanguage === "de" && entry.article ? genderClass(entry.article) : undefined}>
+              {label}
+            </span>
+            {qualifier && <small> ({qualifier})</small>}
+          </span>
+        );
+      })}
+    </p>
   );
 }
 
@@ -286,12 +293,6 @@ function sameText(first: string | null | undefined, second: string | null | unde
   const a = cleanText(first);
   const b = cleanText(second);
   return Boolean(a && b && a === b);
-}
-
-function containsText(container: string | null | undefined, value: string | null | undefined) {
-  const a = cleanText(container);
-  const b = cleanText(value);
-  return Boolean(a && b && (a === b || a.includes(b)));
 }
 
 function genderClass(article: "der" | "die" | "das") {

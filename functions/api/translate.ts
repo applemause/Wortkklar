@@ -13,7 +13,7 @@ const systemPrompt = `Ты — точный русско-немецкий уче
   "kind": "term|sentence",
   "correctedInput": "исправленный исходный текст или null",
   "translation": "основной естественный перевод",
-  "explanation": "краткое полезное пояснение",
+  "explanation": "",
   "entries": [
     {
       "type": "noun|verb|adjective|phrase|other",
@@ -40,24 +40,25 @@ const systemPrompt = `Ты — точный русско-немецкий уче
 Правила:
 - Сначала исправь орфографию исходного текста. correctedInput содержит только исправленный исходный текст, если он отличается хотя бы регистром или буквой; иначе null. Никогда не помещай туда перевод.
 - kind="sentence" для полноценного предложения. Для предложения верни только translation, correctedInput при необходимости, пустую explanation и пустой массив entries. Не делай словарный разбор и не создавай примеры.
-- kind="term" для одного слова или короткого словарного выражения. Для него верни от одного до трёх entries и по три примера для каждого.
+- kind="term" для одного слова или короткого словарного выражения. Для него верни от одного до трёх entries.
 - Первый entry — основное, самое частое значение и должен соответствовать полю translation.
 - Добавляй второй или третий entry только для действительно частых самостоятельных значений или частых вариантов перевода. Не добавляй редкие, книжные и устаревшие значения и не заполняй список близкими синонимами ради количества.
 - При переводе немецкого слова на русский для разных значений можно повторять немецкое entry.word, но entries[].translation должны ясно и коротко различать русские значения.
 - При переводе русского слова на немецкий каждое частое немецкое соответствие оформляй отдельным entry со своей грамматикой.
+- Для kind="term" всегда оставляй explanation пустой строкой. Никогда не перечисляй значения предложением и не пиши фразы вроде «глагол имеет несколько значений». Каждое значение должно быть отдельным entry.
+- entries[].translation — короткое значение без вводных слов и полного предложения. Допустимо уточнение сферы употребления в скобках: «останавливать (транспорт)», «сохранять (традицию, обещание)».
 - Поле translation содержит только один основной естественный перевод на целевом языке. Не повторяй исходное слово, не добавляй тире, слеши, подписи и пояснения.
 - Если целевой язык русский, translation никогда не должен начинаться с немецкого артикля der, die или das. Артикль указывай только в немецких словарных данных entry.
 - Все explanation и entries[].translation пиши только по-русски.
 - Немецкий язык используй только в entries[].word, грамматических формах, government и examples[].german.
-- examples[].russian всегда пиши по-русски. Для каждого entry дай ровно три коротких, естественных и разных примера уровня A2-B1, показывающих именно это значение. Не смешивай разные значения в примерах одного entry.
+- examples[].russian всегда пиши по-русски. Если entry один, дай три коротких разных примера уровня A2-B1. Если entries несколько, дай ровно один пример для каждого entry, показывающий именно его значение. Так общий результат всегда содержит от двух до трёх примеров.
 - При переводе с русского на немецкий всегда разбирай ключевые немецкие слова результата.
 - Если основной немецкий перевод — существительное, translation обязательно начинай с артикля der, die или das.
 - Для немецкого существительного всегда нормализуй entry.word в единственное число и укажи его артикль, даже если пользователь ввёл множественное число. В plural укажи множественное число без артикля die.
 - Для глаголов обязательно указывай Infinitiv, Präteritum, Partizip II и haben/sein.
 - Для отделяемых и возвратных глаголов показывай полную словарную форму. У отделяемых глаголов указывай корректную форму Präteritum, например "bog ab", и Partizip II.
-- Для простого однозначного слова оставляй explanation пустой строкой. Заполняй его только если нужно коротко различить значения или употребление; не давай общих определений и не описывай типичные склонения.
+- explanation всегда оставляй пустой строкой: различия значений передавай только через отдельные entries и короткие уточнения в скобках.
 - Не придумывай редкие значения без необходимости.
-- Пояснение должно быть коротким и понятным ученику A2-B1.
 - JSON должен быть валидным.`;
 
 const translationSchema = {
@@ -88,7 +89,7 @@ const translationSchema = {
           government: { type: ["string", "null"] },
           examples: {
             type: "array",
-            minItems: 3,
+            minItems: 1,
             maxItems: 3,
             items: {
               type: "object",
@@ -160,8 +161,8 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const retryInstruction = attempt === 0 ? "" : targetLanguage === "ru"
-        ? "\nКРИТИЧЕСКИ ВАЖНО: предыдущий ответ был отклонён, потому что translation был не на русском. Верни translation только на русском языке."
-        : "\nКРИТИЧЕСКИ ВАЖНО: предыдущий ответ был отклонён, потому что translation был не на немецком. Верни translation только на немецком языке.";
+        ? "\nКРИТИЧЕСКИ ВАЖНО: предыдущий ответ был отклонён. Верни translation только на русском языке. Для term оставь explanation пустым, а частые значения оформи отдельными entries."
+        : "\nКРИТИЧЕСКИ ВАЖНО: предыдущий ответ был отклонён. Верни translation только на немецком языке. Для term оставь explanation пустым, а частые значения оформи отдельными entries.";
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -176,7 +177,7 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
             { role: "user", content: `${userPrompt}${retryInstruction}` }
           ],
           reasoning_effort: "medium",
-          max_completion_tokens: 3600,
+          max_completion_tokens: 2800,
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -206,7 +207,11 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
         parsed.translation = normalizeTranslation(parsed.translation, targetLanguage);
       }
       const validShape = parsed.translation && parsed.kind && Array.isArray(parsed.entries);
-      const validTerm = parsed.kind !== "term" || (parsed.entries!.length >= 1 && parsed.entries!.length <= 3);
+      const validTerm = parsed.kind !== "term" || (
+        parsed.entries!.length >= 1 &&
+        parsed.entries!.length <= 3 &&
+        !parsed.explanation?.trim()
+      );
 
       if (!validShape || !validTerm || !hasExpectedLanguage(parsed.translation!, targetLanguage)) {
         continue;
@@ -214,8 +219,18 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
 
       if (parsed.kind === "sentence") {
         parsed.entries = [];
-        parsed.explanation = "";
+      } else if (parsed.entries!.length > 1) {
+        parsed.entries = parsed.entries!.map((entry) => {
+          if (!entry || typeof entry !== "object") return entry;
+          const typedEntry = entry as Record<string, unknown>;
+          return {
+            ...typedEntry,
+            examples: Array.isArray(typedEntry.examples) ? typedEntry.examples.slice(0, 1) : []
+          };
+        });
       }
+
+      parsed.explanation = "";
 
       return json({ ...parsed, sourceLanguage, targetLanguage });
     }
